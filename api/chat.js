@@ -32,14 +32,21 @@ export default async function handler(req, res) {
 
     const variables = { term: userMessage };
 
-    const shopifyRes = await fetch(\`https://\${shopifyDomain}/api/2023-10/graphql.json\`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Storefront-Access-Token': storefrontToken,
-      },
-      body: JSON.stringify({ query, variables }),
-    });
+    const shopifyRes = await fetch(`https://${shopifyDomain}/api/2023-10/graphql.json`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Shopify-Storefront-Access-Token': storefrontToken,
+  },
+  body: JSON.stringify({ query, variables }),
+});
+
+let result;
+try {
+  result = await shopifyRes.json();
+} catch (err) {
+  throw new Error('❌ Shopify response was not valid JSON. Check domain or token.');
+}
 
     const result = await shopifyRes.json();
     const products = result.data?.products?.edges || [];
