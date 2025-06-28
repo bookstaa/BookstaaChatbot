@@ -53,7 +53,8 @@ export default async function handler(req, res) {
       productListText = `Here are some books available at Bookstaa.com:\n\n`;
       for (const { node } of products) {
         const image = node.images.edges?.[0]?.node?.url;
-        productListText += `📘 *${node.title}*\n${node.description?.slice(0, 120)}...\n${image ? image + '\n' : ''}[View Book](${node.onlineStoreUrl})\n\n`;
+        productListText += `📘 *${node.title}* – ₹${node.priceRange?.minVariantPrice?.amount}\n${node.description?.slice(0, 100)}...\n🖼️ ${image}\n🔗 [View Book](${node.onlineStoreUrl})\n\n`;
+`;
       }
     } else {
       productListText = `
