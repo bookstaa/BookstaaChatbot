@@ -3,95 +3,97 @@ import fetch from 'node-fetch';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const SHOPIFY_DOMAIN = 'www.bookstaa.com';
-const STOREFRONT_API_URL = `https://${SHOPIFY_DOMAIN}/api/2024-01/graphql.json`;
-const SHOPIFY_TOKEN = process.env.SHOPIFY_STOREFRONT_API_TOKEN;
-
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
-
-  const userMessage = req.body.message;
-
   try {
-    // Search Shopify products using storefront API
-    const shopifyResponse = await fetch(STOREFRONT_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Storefront-Access-Token': SHOPIFY_TOKEN
-      },
-      body: JSON.stringify({
-        query: `
-          query Search($term: String!) {
-            products(first: 3, query: $term) {
-              edges {
-                node {
-                  id
-                  title
-                  description
-                  onlineStoreUrl
-                  images(first: 1) {
-                    edges {
-                      node {
-                        url
-                      }
-                    }
+    const userMessage = req.body.message;
+    const shopifyDomain = process.env.SHOPIFY_STORE_DOMAIN;
+    const storefrontToken = process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN;
+
+    // Shopify product search via Storefront API
+    const query = `
+      query Search($term: String!) {
+        products(first: 5, query: $term) {
+          edges {
+            node {
+              title
+              description
+              onlineStoreUrl
+              images(first: 1) {
+                edges {
+                  node {
+                    url
                   }
                 }
               }
             }
           }
-        `,
-        variables: {
-          term: userMessage
         }
-      })
+        shop {
+          name
+        }
+      }
+    `;
+
+    const variables = { term: userMessage };
+
+    const shopifyRes = await fetch(`https://${shopifyDomain}/api/2023-10/graphql.json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Storefront-Access-Token': storefrontToken,
+      },
+      body: JSON.stringify({ query, variables }),
     });
 
-    const raw = await shopifyResponse.text();
-    let result;
-    try {
-      result = JSON.parse(raw);
-    } catch (e) {
-      console.error("❌ JSON Parse Error:", e.message);
-      return res.status(500).json({ error: 'Invalid JSON from Shopify: ' + raw.slice(0, 100) });
-    }
+    const result = await shopifyRes.json();
+    const products = result.data?.products?.edges || [];
 
-    const products = result?.data?.products?.edges || [];
     let productListText = '';
-
     if (products.length > 0) {
-      productListText = `Here are some matching books on Bookstaa:\n\n`;
+      productListText = `Here are some books available at Bookstaa.com:\n\n`;
       for (const { node } of products) {
         const image = node.images.edges?.[0]?.node?.url;
-        productListText += `🛍️ *${node.title}*\n${node.description?.slice(0, 120)}...\n${image ? image + '\n' : ''}[Buy Now](${node.onlineStoreUrl})\n\n`;
+        productListText += `📘 *${node.title}*\n${node.description?.slice(0, 120)}...\n${image ? image + '\n' : ''}[View Book](${node.onlineStoreUrl})\n\n`;
       }
     } else {
-      productListText = `Sorry, no matching products found for "${userMessage}" on Bookstaa.com.\nYou can email us at support@bookstaa.com to request this book or get help.`;
+      productListText = `
+❌ Sorry, we couldn't find any books matching "${userMessage}" on Bookstaa.com.
+
+📩 You can reach out to [support@bookstaa.com](mailto:support@bookstaa.com) for personalized help.
+
+Here are some top picks you might like:
+
+1. [Ayurveda and Marma Therapy](https://www.bookstaa.com/products/ayurveda-and-marma-therapy-energy-points-in-yogic-healing-david-frawley-9788120835603-8120835603)
+2. [Yoga for Health & Healing](https://www.bookstaa.com/products/yoga-for-health-healing)
+3. [Bhagavad Gita: A New Translation](https://www.bookstaa.com/products/bhagavad-gita-new-translation)
+
+Let me know if you'd like more suggestions!
+      `.trim();
     }
 
+    // Final assistant reply via OpenAI
     const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo', // For cost efficiency
+      model: 'gpt-4',
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful assistant for Bookstaa.com, a bookstore. Recommend relevant books with links.'
+          content: `You are a helpful assistant for Bookstaa.com — an online bookstore. Only recommend books that exist on Bookstaa.com. Use the product list below to respond to the user's query.`,
         },
         {
           role: 'user',
-          content: userMessage
+          content: userMessage,
         },
         {
           role: 'assistant',
-          content: productListText
+          content: productListText,
         }
-      ]
+      ],
+      temperature: 0.7,
     });
 
-    res.status(200).json({ choices: completion.choices });
-
-  } catch (err) {
-    console.error('❌ Error in /api/chat:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(200).json(completion);
+  } catch (error) {
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: { message: error.message } });
   }
 }
