@@ -1,0 +1,16 @@
+[
+  {
+    "title": "Shri Ramcharitmanas",
+    "publisher": "Gita Press",
+    "price": "₹295",
+    "tags": ["Ram", "Ramcharitmanas", "Tulsidas"],
+    "url": "https://bookstaa.com/products/shri-ramcharitmanas"
+  },
+  {
+    "title": "Valmiki Ramayan",
+    "publisher": "Motilal Banarsidass",
+    "price": "₹695",
+    "tags": ["Ram", "Ramayan", "Valmiki"],
+    "url": "https://bookstaa.com/products/valmiki-ramayan"
+  }
+]
