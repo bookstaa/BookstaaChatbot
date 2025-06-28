@@ -45,16 +45,26 @@ export default async function handler(req, res) {
   let productReply = '';
 
   try {
-    const shopifyRes = await fetch(`https://${API_DOMAIN}/api/2024-01/graphql.json`, {
-      method: 'POST',
-      headers: {
-        'X-Shopify-Storefront-Access-Token': SHOPIFY_TOKEN,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(shopifyQuery),
-    });
+    try {
+  const testRes = await fetch(`https://b80e25.myshopify.com/api/2024-01/graphql.json`, {
+    method: 'POST',
+    headers: {
+      'X-Shopify-Storefront-Access-Token': process.env.SHOPIFY_STOREFRONT_API_TOKEN,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ query: "{ shop { name } }" })
+  });
 
-    const shopifyData = await shopifyRes.json();
+  const text = await testRes.text(); // NOTE: using .text(), not .json()
+  console.log("✅ Raw response from Shopify:", text);
+
+  // Try parsing JSON
+  const parsed = JSON.parse(text);
+  productReply = `Your store name is: ${parsed.data.shop.name}`;
+} catch (err) {
+  productReply = `❌ Shopify fetch error: ${err.message}`;
+}
+
 
     const products = shopifyData?.data?.products?.edges || [];
 
