@@ -1,3 +1,4 @@
+console.log("✅ script.js loaded");
 async function sendMessage() {
   const input = document.getElementById('user-input');
   const chatBox = document.getElementById('chat-box');
