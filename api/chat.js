@@ -9,6 +9,7 @@ export default async function handler(req, res) {
     const shopifyDomain = process.env.SHOPIFY_STORE_DOMAIN;
     const storefrontToken = process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN;
 
+    // Shopify product search via Storefront API
     const query = `
       query Search($term: String!) {
         products(first: 5, query: $term) {
@@ -22,6 +23,11 @@ export default async function handler(req, res) {
                   node {
                     url
                   }
+                }
+              }
+              priceRange {
+                minVariantPrice {
+                  amount
                 }
               }
             }
@@ -44,46 +50,37 @@ export default async function handler(req, res) {
       body: JSON.stringify({ query, variables }),
     });
 
-    let result;
-    try {
-      result = await shopifyRes.json();
-    } catch (err) {
-      throw new Error('❌ Shopify response was not valid JSON. Check domain or token.');
-    }
+    const result = await shopifyRes.json();
+    const products = result.data?.products?.edges || [];
 
-    if (!result || !result.data || !result.data.products) {
-      throw new Error('❌ Unexpected Shopify response format. Please check access token and store domain.');
-    }
-
-    const products = result.data.products.edges || [];
     let productListText = '';
-
     if (products.length > 0) {
       productListText = `Here are some books available at Bookstaa.com:\n\n`;
       for (const { node } of products) {
-        const image = node.images.edges?.[0]?.node?.url || '';
-        productListText += `📘 ${node.title}\n${node.description?.slice(0, 100)}...\n🖼️ ${image}\n🔗 [View Book](${node.onlineStoreUrl})\n\n`;
+        const image = node.images.edges?.[0]?.node?.url;
+        const price = node.priceRange?.minVariantPrice?.amount;
+        productListText += `📘 *${node.title}* – ₹${price}\n${node.description?.slice(0, 100)}...\n🖼️ ${image}\n🔗 ${node.onlineStoreUrl}\n\n`;
       }
     } else {
       productListText = `
 ❌ Sorry, we couldn't find any books matching "${userMessage}" on Bookstaa.com.
 
-📩 You can reach out to [support@bookstaa.com](mailto:support@bookstaa.com) for personalized help.
+📩 You can reach out to [support@bookstaa.com](mailto:support@bookstaa.com) for help.
 
-Here are some top picks you might like:
-
+Here are a few hand-picked recommendations:
 1. [Ayurveda and Marma Therapy](https://www.bookstaa.com/products/ayurveda-and-marma-therapy-energy-points-in-yogic-healing-david-frawley-9788120835603-8120835603)
 2. [Yoga for Health & Healing](https://www.bookstaa.com/products/yoga-for-health-healing)
 3. [Bhagavad Gita: A New Translation](https://www.bookstaa.com/products/bhagavad-gita-new-translation)
       `.trim();
     }
 
+    // Compose final assistant response
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [
         {
           role: 'system',
-          content: `You are a helpful assistant for Bookstaa.com — an online bookstore. Use the product list below to answer user queries about books. Only suggest books from Bookstaa.com.`,
+          content: `You are a helpful assistant for Bookstaa.com — an online bookstore. Respond only with real books from Bookstaa.com. Use the product list below to assist.`,
         },
         {
           role: 'user',
@@ -91,15 +88,16 @@ Here are some top picks you might like:
         },
         {
           role: 'system',
-          content: `Here is the product list based on the search query:\n\n${productListText}`,
-        }
+          content: productListText,
+        },
       ],
       temperature: 0.7,
     });
 
-    res.status(200).json(completion);
+    const reply = completion.choices?.[0]?.message?.content || '⚠️ No reply from assistant.';
+    res.status(200).json({ reply });
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('❌ Error:', error.message);
     res.status(500).json({ error: { message: error.message } });
   }
 }
