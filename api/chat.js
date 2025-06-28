@@ -9,7 +9,6 @@ export default async function handler(req, res) {
     const shopifyDomain = process.env.SHOPIFY_STORE_DOMAIN;
     const storefrontToken = process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN;
 
-    // GraphQL query to Shopify
     const query = `
       query Search($term: String!) {
         products(first: 5, query: $term) {
@@ -47,7 +46,19 @@ export default async function handler(req, res) {
       body: JSON.stringify({ query, variables }),
     });
 
-    const result = await shopifyRes.json();
+    if (!shopifyRes.ok) {
+      const errorText = await shopifyRes.text();
+      throw new Error(`Shopify API error (${shopifyRes.status}): ${errorText}`);
+    }
+
+    let result;
+    try {
+      result = await shopifyRes.json();
+    } catch (err) {
+      const raw = await shopifyRes.text();
+      throw new Error(`Invalid JSON from Shopify: ${raw}`);
+    }
+
     const products = result.data?.products?.edges || [];
 
     let productListText = '';
@@ -71,16 +82,27 @@ Here are some top picks you might like:
 3. [Bhagavad Gita: A New Translation](https://www.bookstaa.com/products/bhagavad-gita-new-translation)
 
 Let me know if you'd like more suggestions!
-      `.trim();
+`.trim();
     }
 
-    // Send message to OpenAI with the product context
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [
         {
           role: 'system',
-          content: `You are a chatbot assistant for Bookstaa.com. Only recommend products from the list below. Do not hallucinate or invent books. If nothing matches, politely say so and suggest similar items or contact options. Here is the product info:\n\n${productListText}`
+          content: `You are a chatbot assistant for Bookstaa.com. Only recommend products from the list below. If nothing matches, politely say so and suggest similar items or contact options.\n\n${productListText}`
         },
         {
           role: 'user',
+          content: userMessage
+        }
+      ],
+      temperature: 0.7
+    });
+
+    res.status(200).json(completion);
+  } catch (error) {
+    console.error('❌ Error in API:', error.message);
+    res.status(500).json({ error: { message: error.message } });
+  }
+}
