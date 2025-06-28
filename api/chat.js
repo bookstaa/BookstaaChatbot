@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     const shopifyDomain = process.env.SHOPIFY_STORE_DOMAIN;
     const storefrontToken = process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN;
 
-    // Shopify product search via Storefront API
+    // GraphQL query to Shopify
     const query = `
       query Search($term: String!) {
         products(first: 5, query: $term) {
@@ -18,6 +18,11 @@ export default async function handler(req, res) {
               title
               description
               onlineStoreUrl
+              priceRange {
+                minVariantPrice {
+                  amount
+                }
+              }
               images(first: 1) {
                 edges {
                   node {
@@ -27,9 +32,6 @@ export default async function handler(req, res) {
               }
             }
           }
-        }
-        shop {
-          name
         }
       }
     `;
@@ -50,11 +52,11 @@ export default async function handler(req, res) {
 
     let productListText = '';
     if (products.length > 0) {
-      productListText = `Here are some books available at Bookstaa.com:\n\n`;
+      productListText += `Here are some books available at Bookstaa.com:\n\n`;
       for (const { node } of products) {
         const image = node.images.edges?.[0]?.node?.url;
-        productListText += `📘 *${node.title}* – ₹${node.priceRange?.minVariantPrice?.amount}\n${node.description?.slice(0, 100)}...\n🖼️ ${image}\n🔗 [View Book](${node.onlineStoreUrl})\n\n`;
-`;
+        const price = node.priceRange?.minVariantPrice?.amount || 'N/A';
+        productListText += `📘 *${node.title}* – ₹${price}\n${node.description?.slice(0, 100)}...\n${image ? `🖼️ ${image}\n` : ''}🔗 [View Book](${node.onlineStoreUrl})\n\n`;
       }
     } else {
       productListText = `
@@ -72,32 +74,13 @@ Let me know if you'd like more suggestions!
       `.trim();
     }
 
-    // Final assistant reply via OpenAI
+    // Send message to OpenAI with the product context
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [
         {
           role: 'system',
-          content: `You are a helpful assistant for Bookstaa.com — an online bookstore. Only recommend books that exist on Bookstaa.com. Use the product list below to respond to the user's query.`,
+          content: `You are a chatbot assistant for Bookstaa.com. Only recommend products from the list below. Do not hallucinate or invent books. If nothing matches, politely say so and suggest similar items or contact options. Here is the product info:\n\n${productListText}`
         },
         {
           role: 'user',
-          content: userMessage,
-        },
-        {
-          {
-  role: 'system',
-  content: `You are a chatbot assistant for Bookstaa.com. Only recommend products from the list below. Do not hallucinate or invent books. If nothing matches, politely say so and suggest similar items or contact options. Here is the product info:\n\n${productListText}`
-}
-,
-        }
-      ],
-      temperature: 0.7,
-    });
-
-    res.status(200).json(completion);
-  } catch (error) {
-    console.error('❌ Error:', error);
-    res.status(500).json({ error: { message: error.message } });
-  }
-}
