@@ -1,3 +1,5 @@
+// === chat.js ===
+
 import { OpenAI } from 'openai';
 import fetch from 'node-fetch';
 
@@ -33,7 +35,7 @@ export default async function handler(req, res) {
       }
     `;
 
-    const variables = { term: userMessage };
+    const variables = { term: `title:${userMessage}* OR description:${userMessage}*` };
 
     const shopifyRes = await fetch(`https://${shopifyDomain}/api/2023-10/graphql.json`, {
       method: 'POST',
@@ -49,22 +51,24 @@ export default async function handler(req, res) {
 
     let productListText = '';
     if (products.length > 0) {
-      productListText = `Here are some books available at Bookstaa.com:\n\n`;
+      productListText = `Here are some books available at Bookstaa.com:<br/><br/>`;
       for (const { node } of products) {
         const image = node.images.edges?.[0]?.node?.url || '';
-        productListText += `📘 *${node.title}*\n📝 ${node.description?.slice(0, 100)}...\n🖼️ ${image}\n🔗 ${node.onlineStoreUrl}\n\n`;
+        productListText += `
+          <strong>${node.title}</strong><br/>
+          🖼️ <img src="${image}" alt="${node.title}" style="max-width:150px;"><br/>
+          🔗 <a href="${node.onlineStoreUrl}" target="_blank">View Book</a><br/><br/>
+        `;
       }
     } else {
       productListText = `
-❌ Sorry, we couldn't find any books matching "${userMessage}" on Bookstaa.com.
-
-📩 You can contact our support team at [support@bookstaa.com](mailto:support@bookstaa.com) for help.
-
-Here are a few popular picks:
-- https://www.bookstaa.com/products/ayurveda-and-marma-therapy-energy-points-in-yogic-healing-david-frawley-9788120835603-8120835603
-- https://www.bookstaa.com/products/yoga-for-health-healing
-- https://www.bookstaa.com/products/bhagavad-gita-new-translation
-      `.trim();
+❌ We couldn't find books that exactly match "${userMessage}".<br/><br/>
+📩 You can email us at <a href="mailto:support@bookstaa.com">support@bookstaa.com</a> for help.<br/><br/>
+Meanwhile, here are some suggestions:<br/>
+- <a href="https://www.bookstaa.com/products/yoga-for-health-healing" target="_blank">Yoga for Health & Healing</a><br/>
+- <a href="https://www.bookstaa.com/products/ayurveda-and-marma-therapy-energy-points-in-yogic-healing-david-frawley-9788120835603-8120835603" target="_blank">Ayurveda and Marma Therapy</a><br/>
+- <a href="https://www.bookstaa.com/products/bhagavad-gita-new-translation" target="_blank">Bhagavad Gita: New Translation</a><br/><br/>
+Let me know if you'd like more suggestions.`;
     }
 
     const completion = await openai.chat.completions.create({
@@ -72,22 +76,66 @@ Here are a few popular picks:
       messages: [
         {
           role: 'system',
-          content: `You are a friendly shopping assistant for Bookstaa.com. Respond with helpful, polite, and relevant answers. Recommend only products that are found on Bookstaa.com.`,
+          content: `You are Bookstaa.com's AI shopping assistant, powered by ChatGPT. Only recommend books that are found in the product list below.
+
+✅ If books are available, reply with clickable links and book cover images (HTML format).
+❌ If not, respond politely and suggest related books or contact options.
+Product List:
+${productListText}`,
         },
-        { role: 'user', content: userMessage },
         {
-          role: 'system',
-          content: `Here are the matching products based on the query:\n\n${productListText}`,
-        }
+          role: 'user',
+          content: userMessage,
+        },
       ],
       temperature: 0.7,
     });
 
-    const reply = completion.choices?.[0]?.message?.content || "⚠️ No reply from assistant.";
+    const reply = completion.choices?.[0]?.message?.content || '⚠️ No reply from assistant.';
     res.status(200).json({ reply });
-
   } catch (error) {
     console.error('❌ Error:', error);
     res.status(500).json({ error: { message: error.message } });
   }
 }
+
+
+// === script.js ===
+
+console.log('📘 script.js loaded');
+
+async function sendMessage() {
+  const userInput = document.getElementById('user-input').value.trim();
+  if (!userInput) return;
+
+  const chatBox = document.getElementById('chat-box');
+  const userDiv = document.createElement('div');
+  userDiv.className = 'user';
+  userDiv.textContent = userInput;
+  chatBox.appendChild(userDiv);
+
+  document.getElementById('user-input').value = '';
+
+  const botDiv = document.createElement('div');
+  botDiv.className = 'bot';
+  botDiv.innerHTML = '⌛ Typing...';
+  chatBox.appendChild(botDiv);
+
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: userInput }),
+    });
+
+    const data = await response.json();
+    botDiv.innerHTML = data.reply || '⚠️ No reply from assistant.';
+  } catch (error) {
+    console.error('❌ Error:', error);
+    botDiv.innerHTML = '❌ Error: ' + error.message;
+  }
+
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+window.sendMessage = sendMessage;
