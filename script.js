@@ -17,14 +17,14 @@ async function sendMessage() {
   try {
     console.log("🚀 Sending to backend:", userMessage);
 
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: userMessage })
-    });
+const response = await fetch('/api/chat', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ message: userMessage })
+});
 
-    const data = await response.json();
-    console.log("📩 Response from backend:", data);
+const data = await response.json();
+const botReply = data.reply || '⚠️ No reply from assistant.';
 
     const botReply = data?.choices?.[0]?.message?.content || '⚠️ No reply from assistant.';
 
