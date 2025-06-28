@@ -43,7 +43,7 @@ export default async function handler(req, res) {
 
   let productReply = '';
   try {
-    const shopifyRes = await fetch(`https://${SHOP_DOMAIN}/api/2024-01/graphql.json`, {
+    const shopifyRes = await fetch(`https://b80e25.myshopify.com/api/2024-01/graphql.json`, {
       method: 'POST',
       headers: {
         'X-Shopify-Storefront-Access-Token': STOREFRONT_TOKEN,
