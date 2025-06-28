@@ -20,8 +20,8 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ message: userMessage })
       });
 
-      const data = await response.json();
-      const reply = data.choices?.[0]?.message?.content || '⚠️ No reply from assistant.';
+const data = await response.json();
+const botReply = data.reply || '⚠️ No reply from assistant.';
 
       const botDiv = document.createElement('div');
       botDiv.className = 'bot';
