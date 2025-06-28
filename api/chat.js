@@ -1,4 +1,3 @@
-// /api/chat.js
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -9,7 +8,6 @@ export default async function handler(req, res) {
   const shopDomain = process.env.SHOPIFY_STORE_DOMAIN;
   const storefrontToken = process.env.SHOPIFY_STOREFRONT_API_TOKEN;
 
-  // Step 1: Search products from Shopify
   const shopifyQuery = `
     query SearchProducts($search: String!) {
       products(first: 5, query: $search) {
@@ -30,7 +28,7 @@ export default async function handler(req, res) {
     }
   `;
 
-  const shopifyResponse = await fetch(`https://${shopDomain}/api/2024-04/graphql.json`, {
+  const shopifyResponse = await fetch(`https://${shopDomain}/api/2023-10/graphql.json`, {
     method: 'POST',
     headers: {
       'X-Shopify-Storefront-Access-Token': storefrontToken,
@@ -42,6 +40,12 @@ export default async function handler(req, res) {
     })
   });
 
+  if (!shopifyResponse.ok) {
+    const text = await shopifyResponse.text();
+    console.error("? Shopify API Error:", text);
+    return res.status(500).json({ error: 'Shopify API request failed', details: text });
+  }
+
   const shopifyData = await shopifyResponse.json();
   const products = shopifyData.data?.products?.edges || [];
 
@@ -50,17 +54,16 @@ export default async function handler(req, res) {
     const price = priceRange.minVariantPrice.amount;
     const currency = priceRange.minVariantPrice.currencyCode;
     const url = `https://${shopDomain}/products/${handle}`;
-    return `- ${title} – ${currency} ${price}\n  ${url}`;
+    return `- ${title} â€“ ${currency} ${price}\n  ${url}`;
   }).join('\n');
 
-  const openaiSystemPrompt = `
-You are a helpful assistant for Bookstaa.com, an online bookstore and product store. Recommend products only from this store.
-If the user is looking for something, suggest these matching items:
+  const systemPrompt = `
+You are Bookstaa.com's AI Assistant. Always recommend products only from https://${shopDomain}.
+If a user searches for a book or product, respond politely with matching items from the list below:
 
-${productList || 'Sorry, no products found for this query.'}
+${productList || 'No matching products found on Bookstaa.com for that query.'}
 `;
 
-  // Step 2: Use OpenAI to form a natural response
   const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -70,7 +73,7 @@ ${productList || 'Sorry, no products found for this query.'}
     body: JSON.stringify({
       model: 'gpt-3.5-turbo',
       messages: [
-        { role: 'system', content: openaiSystemPrompt },
+        { role: 'system', content: systemPrompt },
         { role: 'user', content: message }
       ],
       temperature: 0.7
