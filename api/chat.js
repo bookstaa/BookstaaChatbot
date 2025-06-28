@@ -84,8 +84,11 @@ Let me know if you'd like more suggestions!
           content: userMessage,
         },
         {
-          role: 'assistant',
-          content: productListText,
+          {
+  role: 'system',
+  content: `You are a chatbot assistant for Bookstaa.com. Only recommend products from the list below. Do not hallucinate or invent books. If nothing matches, politely say so and suggest similar items or contact options. Here is the product info:\n\n${productListText}`
+}
+,
         }
       ],
       temperature: 0.7,
