@@ -100,7 +100,10 @@ Let me know if you'd like more suggestions!
       temperature: 0.7
     });
 
-    res.status(200).json(completion);
+res.status(200).json({
+  reply: completion.choices?.[0]?.message?.content || '⚠️ No reply from assistant.'
+});
+
   } catch (error) {
     console.error('❌ Error in API:', error.message);
     res.status(500).json({ error: { message: error.message } });
