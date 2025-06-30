@@ -1,3 +1,11 @@
+const fs = require('fs');
+const path = require('path');
+
+// ✅ Load enriched product data at startup
+const bookstaaData = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'bookstaa-products.json'), 'utf-8')
+);
+
 const fetch = require('node-fetch');
 
 // ✅ Bookstaa Chatbot Handler — Smarter, Intent-Aware, and Human-like with OpenAI fallback
