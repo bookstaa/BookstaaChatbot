@@ -1,13 +1,14 @@
-// /api/search-products.js
-
 const fetch = require('node-fetch');
 
-const SHOPIFY_DOMAIN = process.env.SHOPIFY_DOMAIN || 'b80e25.myshopify.com';
+const SHOPIFY_DOMAIN = process.env.SHOPIFY_DOMAIN;
 const SHOPIFY_API_KEY = process.env.SHOPIFY_STOREFRONT_API_KEY;
-
 
 module.exports = async (req, res) => {
   const { q } = req.query;
+
+  if (!SHOPIFY_DOMAIN || !SHOPIFY_API_KEY) {
+    return res.status(500).json({ error: 'Missing Shopify environment variables' });
+  }
 
   if (!q || typeof q !== 'string') {
     return res.status(400).json({ error: 'Missing search query' });
