@@ -3,7 +3,8 @@
 const fetch = require('node-fetch');
 
 const SHOPIFY_DOMAIN = process.env.SHOPIFY_DOMAIN || 'b80e25.myshopify.com';
-const SHOPIFY_API_KEY = process.env.SHOPIFY_STOREFRONT_TOKEN_KEY;
+const SHOPIFY_API_KEY = process.env.SHOPIFY_STOREFRONT_API_KEY;
+
 
 module.exports = async (req, res) => {
   const { q } = req.query;
