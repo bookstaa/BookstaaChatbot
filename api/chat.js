@@ -10,16 +10,23 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Invalid message input' });
   }
 
-  const query = message.trim();
+  const query = message.trim().toLowerCase();
 
-  // 🔧 NEW SECTION: Handle friendly human conversations like greetings
-  const isGreeting = /^(hi|hello|hey|how are you|bye|goodbye|thanks?|thank you|namaste|hello there)$/i.test(query);
-  if (isGreeting) {
+  // ✨ Section: Handle friendly greetings
+  const greetings = ['hi', 'hello', 'hey', 'namaste', 'hello there', 'hi there'];
+  if (greetings.some(g => query.includes(g))) {
     return res.status(200).json({
-      reply: `👋 Hello! I’m your friendly reading assistant from Bookstaa.\n\nI’m here to help you find books, authors, and topics that interest you — or even track your orders.\n\nTry asking:\n• *"Show me Yoga books"* 🧘‍♂️\n• *"Track my order"* 📦\n• *"Best astrology books"* 🔮\n\nLet me know how I can assist you today!`
+      reply: `👋 Hello! I’m your friendly reading assistant from Bookstaa.\n\nI’m here to help you find books, authors, topics — or even track your orders.\n\nTry asking:\n• *"Show me Yoga books"* 🧘‍♂️\n• *"Track my order"* 📦\n• *"Best astrology books"* 🔮`
     });
   }
-  // 🔧 END NEW SECTION
+
+  // 📦 Section: Handle order tracking queries
+  const orderKeywords = ['track order', 'order status', 'where is my order', 'track my parcel'];
+  if (orderKeywords.some(k => query.includes(k))) {
+    return res.status(200).json({
+      reply: `📦 To track your order, please enter your AWB number from Delhivery.\n\nUse our tracking tool at [Bookstaa Order Tracking](https://www.bookstaa.com/pages/track-order).\n\nNeed help? Just let me know!`
+    });
+  }
 
   try {
     // 🔍 Try fuzzy product search via search-products.js
@@ -37,17 +44,18 @@ module.exports = async (req, res) => {
       });
 
       return res.status(200).json({
-        reply: `${cards.join('\n\n')}\n\n🛒 [Explore more on Bookstaa.com](https://www.bookstaa.com)`
+        reply: `${cards.join('\n\n')}\n\n🛒 Explore more at [Bookstaa.com](https://www.bookstaa.com)`
       });
     }
 
   } catch (err) {
     console.error('Search API error:', err.message);
-    // Don’t block fallback
+    // Do not block fallback
   }
 
-  // 🧠 FRIENDLY FALLBACK RESPONSE — Updated to be more conversational
-  const fallbackMessage = `
+  // 🧠 Friendly fallback if no product match
+  return res.status(200).json({
+    reply: `
 🤖 I couldn't find an exact match for that, but I’m here to help!
 
 Here’s what you can try:
@@ -56,9 +64,6 @@ Here’s what you can try:
 • Type **Order Status** or **Track Order** to get delivery updates
 
 🔍 Or just explore more books at [Bookstaa.com](https://www.bookstaa.com) — there’s something for everyone!
-`;
-
-  return res.status(200).json({
-    reply: fallbackMessage.trim()
+    `.trim()
   });
 };
