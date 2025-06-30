@@ -4,10 +4,6 @@ module.exports = async (req, res) => {
   const storeDomain = process.env.SHOPIFY_STORE_DOMAIN;
   const storefrontAccessToken = process.env.SHOPIFY_STOREFRONT_API_KEY;
 
-  console.log("🔍 Testing Storefront API connection...");
-  console.log("🌐 Domain:", storeDomain);
-  console.log("🔑 Token present:", !!storefrontAccessToken);
-
   const gqlQuery = {
     query: `{ shop { name } }`
   };
@@ -30,7 +26,6 @@ module.exports = async (req, res) => {
     }
 
     return res.status(200).json(result.data);
-
   } catch (error) {
     console.error("❌ Shopify API Request Failed:", error);
     return res.status(500).json({ error: 'Internal server error' });
