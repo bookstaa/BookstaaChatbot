@@ -6,8 +6,8 @@ module.exports = async (req, res) => {
   if (!q) return res.status(400).json({ error: 'Query missing' });
 
   try {
-    const storeDomain = 'bookstaa.myshopify.com'; // Replace with your store domain if needed
-    const storefrontAccessToken = process.env.SHOPIFY_STOREFRONT_API_KEY;
+const storeDomain = 'bookstaa.com'; // ✅ Should be your actual custom Shopify domain
+const storefrontAccessToken = process.env.SHOPIFY_STOREFRONT_API_KEY;
 
     const gqlQuery = {
       query: `
