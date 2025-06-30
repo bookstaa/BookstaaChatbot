@@ -1,6 +1,6 @@
 const fetch = require('node-fetch');
 
-const SHOPIFY_DOMAIN = process.env.SHOPIFY_DOMAIN;
+const SHOPIFY_DOMAIN = 'b80e25.myshopify.com';
 const SHOPIFY_API_KEY = process.env.SHOPIFY_STOREFRONT_TOKEN_KEY;
 
 module.exports = async (req, res) => {
@@ -10,13 +10,12 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Missing search query' });
   }
 
-  const searchTerm = q.trim().toLowerCase();
-  const safeQuery = q.replace(/"/g, '\\"');
-
   try {
-    const query = `
+    const searchQuery = q.trim().toLowerCase();
+
+    const graphqlQuery = `
       {
-        products(first: 100, query: "${safeQuery}") {
+        products(first: 100, query: "${searchQuery}") {
           edges {
             node {
               id
@@ -55,24 +54,31 @@ module.exports = async (req, res) => {
         'Content-Type': 'application/json',
         'X-Shopify-Storefront-Access-Token': SHOPIFY_API_KEY,
       },
-      body: JSON.stringify({ query })
+      body: JSON.stringify({ query: graphqlQuery })
     });
 
-    const data = await response.json();
-    if (!data || !data.data || !data.data.products) {
-      return res.status(500).json({ error: 'Shopify API error', details: data.errors || [] });
+    const result = await response.json();
+
+    if (!result.data || !result.data.products) {
+      return res.status(500).json({ error: 'Shopify API error', details: result.errors || [] });
     }
 
-    const products = data.data.products.edges
+    const edges = result.data.products.edges || [];
+    const products = edges
       .map(edge => edge.node)
       .filter(product => {
-        const inTitle = product.title.toLowerCase().includes(searchTerm);
-        const inTags = product.tags.some(tag => tag.toLowerCase().includes(searchTerm));
-        const inProductType = product.productType?.toLowerCase().includes(searchTerm);
-        const inVendor = product.vendor?.toLowerCase().includes(searchTerm);
-        const fuzzyMatch = product.title.toLowerCase().startsWith(searchTerm.slice(0, 4));
+        const title = product.title.toLowerCase();
+        const vendor = product.vendor.toLowerCase();
+        const productType = product.productType?.toLowerCase() || '';
+        const tags = product.tags.map(tag => tag.toLowerCase());
 
-        return inTitle || inTags || inProductType || inVendor || fuzzyMatch;
+        return (
+          title.includes(searchQuery) ||
+          vendor.includes(searchQuery) ||
+          productType.includes(searchQuery) ||
+          tags.some(tag => tag.includes(searchQuery)) ||
+          title.startsWith(searchQuery.slice(0, 4))
+        );
       })
       .map(product => ({
         title: product.title,
@@ -80,15 +86,15 @@ module.exports = async (req, res) => {
         link: `https://www.bookstaa.com/products/${product.handle}`,
         image: product.images.edges[0]?.node?.url || '',
         altText: product.images.edges[0]?.node?.altText || product.title,
-        price: parseFloat(product.variants.edges[0]?.node?.price.amount || 0).toFixed(1),
+        price: parseFloat(product.variants.edges[0]?.node?.price.amount || 0).toFixed(2),
         currency: product.variants.edges[0]?.node?.price.currencyCode || 'INR',
         tags: product.tags
       }));
 
     return res.status(200).json({ products });
 
-  } catch (err) {
-    console.error('Search API error:', err.message);
+  } catch (error) {
+    console.error('Search error:', error.message);
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
