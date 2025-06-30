@@ -1,3 +1,5 @@
+// /api/search-products.js
+
 const fetch = require('node-fetch');
 
 const SHOPIFY_DOMAIN = process.env.SHOPIFY_DOMAIN || 'b80e25.myshopify.com';
@@ -75,7 +77,7 @@ module.exports = async (req, res) => {
           vendor.includes(searchTerm) ||
           productType.includes(searchTerm) ||
           tags.some(tag => tag.includes(searchTerm)) ||
-          title.startsWith(searchTerm.slice(0, 4)) // fuzzy 4-letter prefix
+          title.startsWith(searchTerm.slice(0, 4)) // fuzzy match first 4 chars
         );
       })
       .map(product => ({
