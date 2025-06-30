@@ -3,12 +3,12 @@ const fs = require('fs');
 const path = require('path');
 const { searchBooks } = require('../lib/smartSearch');
 
-// ✅ Load enriched product data from local JSON
+// ✅ Load enriched product data at startup
 const bookstaaData = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../bookstaa-products.json'), 'utf-8')
 );
 
-// ✅ Bookstaa Chatbot Handler — Human-like, Brand-Loyal, Smart
+// ✅ Bookstaa Chatbot Handler — Smarter, Intent-Aware, and Human-like
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -22,26 +22,23 @@ module.exports = async (req, res) => {
   const query = message.trim();
   const normalized = query.toLowerCase();
 
-  // ✅ GREETING INTENT DETECTION — always respond, even with product results
-  const isGreeting = /\b(hi|hello|hey|namaste|you there|how are you|kya haal|good morning|good evening|good afternoon)\b/i.test(normalized);
-  const greetingReply = isGreeting
-    ? `👋 Hello! I’m your friendly reading assistant from Bookstaa.\n\nI’m here to help you find books, authors, topics — or even track your orders.\n\nTry asking:\n• *"Show me Yoga books"* 🧘‍♂️\n• *"Track my order"* 📦\n• *"Best astrology books"* 🔮\n\nLet’s explore some great reads!`
-    : null;
+  // ✅ GREETING INTENT DETECTION
+  const isGreeting = /\b(hi|hello|hey|namaste|how are you|kya haal|hello there|you there|who are you)\b/i.test(normalized);
 
-  // ✅ ORDER TRACKING INTENT
-  const orderIntent = /\b(order status|track order|where is my order|order update|order number|track delivery)\b/i;
+  // ✅ INTENT: ORDER TRACKING
+  const orderIntent = /\b(order status|track order|where is my order|order update)\b/i;
   if (orderIntent.test(normalized)) {
     return res.status(200).json({
       reply: `📦 To track your order, just enter your AWB or tracking number on our [Order Tracking Page](https://www.bookstaa.com/apps/order-tracking).`
     });
   }
 
-  // ✅ PRICE FILTER
+  // ✅ Extract keywords for fuzzy matching
   const hasPriceUnder = normalized.match(/(?:under|below|less than)\s*₹?(\d+)/i);
   const maxPrice = hasPriceUnder ? parseInt(hasPriceUnder[1], 10) : null;
 
   try {
-    // ✅ Perform fuzzy search
+    // ✅ Use smart fuzzy search from local product JSON
     const results = searchBooks(normalized, maxPrice);
 
     if (results && results.length > 0) {
@@ -53,28 +50,38 @@ module.exports = async (req, res) => {
       });
 
       let intro = '';
+      if (isGreeting) {
+        intro += `👋 Hello again! Great to see you.\n\n`;
+      }
       if (uniqueAuthor) {
-        intro = `📚 Showing books by **${uniqueAuthor}**:\n\n`;
+        intro += `📚 Showing books by **${uniqueAuthor}**:\n\n`;
       } else {
-        intro = `📘 Here are some books you might like:\n\n`;
+        intro += `📘 Here are some books you might like:\n\n`;
       }
 
       return res.status(200).json({
-        reply: `${greetingReply ? `${greetingReply}\n\n` : ''}${intro}${cards.join('\n\n')}\n\n🛒 Browse more at [Bookstaa.com](https://www.bookstaa.com)`
+        reply: `${intro}${cards.join('\n\n')}\n\n🛒 Browse more at [Bookstaa.com](https://www.bookstaa.com)`
       });
     }
 
-    // ✅ If price intent but no results
     if (maxPrice) {
       return res.status(200).json({
         reply: `🤖 I couldn’t find books under ₹${maxPrice}, but you can try browsing [Bookstaa.com](https://www.bookstaa.com) for a wider range of books.`
       });
     }
+
+    // ✅ If it's only a greeting and no products matched
+    if (isGreeting) {
+      return res.status(200).json({
+        reply: `👋 Hello! I’m your friendly reading assistant from Bookstaa.\n\nI’m here to help you find books, authors, topics — or even track your orders.\n\nTry asking:\n• *"Show me Yoga books"* 🧘‍♂️\n• *"Track my order"* 📦\n• *"Best astrology books"* 🔮`
+      });
+    }
+
   } catch (err) {
     console.error('Smart search error:', err.message);
   }
 
-  // 🤖 FRIENDLY FALLBACK if nothing matched
+  // 🤖 Friendly fallback if nothing matched
   const fallbackReply = `
 🤖 I couldn’t find anything for that, but I’m still learning!
 
@@ -85,5 +92,5 @@ Here’s what you can try:
 
 🔍 Or explore more books at [Bookstaa.com](https://www.bookstaa.com)`;
 
-  return res.status(200).json({ reply: greetingReply ? `${greetingReply}\n\n${fallbackReply}` : fallbackReply });
+  return res.status(200).json({ reply: fallbackReply });
 };
