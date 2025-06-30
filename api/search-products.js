@@ -1,3 +1,6 @@
+console.log("🔑 DOMAIN:", process.env.SHOPIFY_STORE_DOMAIN);
+console.log("🔑 TOKEN PRESENT:", !!process.env.SHOPIFY_STOREFRONT_API_KEY);
+
 const fetch = require('node-fetch');
 
 module.exports = async (req, res) => {
