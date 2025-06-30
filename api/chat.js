@@ -1,16 +1,4 @@
-const fetch = require('node-fetch');
-
-// Helper: Detect if user is asking about an order
-function isOrderQuery(message) {
-  return /(?:track|order|status|#bkst)/i.test(message);
-}
-
-// Helper: Search Shopify via internal endpoint
-async function fetchProducts(query) {
-  const res = await fetch(`https://bookstaa-chatbot.vercel.app/api/search-products?q=${encodeURIComponent(query)}`);
-  const data = await res.json();
-  return data.products || [];
-}
+const fetch = require("node-fetch");
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -18,60 +6,73 @@ module.exports = async (req, res) => {
   }
 
   const { message } = req.body;
-  if (!message) return res.status(400).json({ error: 'Message missing in request body' });
 
-  const isTracking = isOrderQuery(message);
-  if (isTracking) {
-    return res.status(200).json({
-      reply: `📦 It looks like you're asking about your order. You can track it instantly [here](https://www.bookstaa.com/pages/track-order). Just enter your AWB or Order Number like **#BKST12345AA**. For further help, email [support@bookstaa.com](mailto:support@bookstaa.com).`
-    });
+  if (!message || typeof message !== 'string') {
+    return res.status(400).json({ error: 'Message missing or invalid' });
   }
 
-  // Try fetching matching products
-  const matchedProducts = await fetchProducts(message);
+  const systemPrompt = `
+You are Bookstaa's friendly and intelligent chatbot. You help customers discover books, authors, topics, or categories from Bookstaa.com. Before replying, first try to match the query with actual store data using the following methods:
 
-  if (matchedProducts.length > 0) {
-    const productCards = matchedProducts.slice(0, 6).map(product => {
-      return `
-🛍️ [**${product.title}**](${product.link})  
-by ${product.author} — ₹${product.price}
-![${product.altText}](${product.image})
-`;
-    }).join('\n\n');
+- Search by product title, author, or tag (even partial match, 3+ characters)
+- Search by ISBN
+- Match metadata like categories or genres if available
+- Suggest books from similar collections if no exact match is found
 
-    return res.status(200).json({
-      reply: `Here are some books that might interest you:\n\n${productCards}\n\nExplore more on [Bookstaa.com](https://www.bookstaa.com).`
-    });
-  }
+If the user asks about:
+- Order tracking or order status: Ask for their order number or AWB
+- Shipping/refund/cancellation policy: Provide helpful static info or redirect to the correct page
 
-  // Fallback to ChatGPT if nothing matches
+Do not recommend authors or books that are not available in Bookstaa's store. Never hallucinate products. If no match is found, offer a friendly fallback with suggestions on what to search (e.g., title, author, ISBN, order status, etc.).
+
+Always end by suggesting: 'Explore more on https://www.bookstaa.com'
+`.trim();
+
   try {
-    const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    // First try product search
+    const productSearchRes = await fetch(`https://bookstaa-chatbot.vercel.app/api/search-products?q=${encodeURIComponent(message)}`);
+    const productSearchData = await productSearchRes.json();
+
+    if (productSearchData && productSearchData.products && productSearchData.products.length > 0) {
+      const productCards = productSearchData.products.slice(0, 5).map(product => {
+        return `📘 *${product.title}*\nAuthor: ${product.author}\nPrice: ₹${product.price}\n[View on Bookstaa](${product.link})\n`;
+      }).join('\n');
+
+      return res.status(200).json({
+        reply: `Here are some books we found for you:\n\n${productCards}\nExplore more at [Bookstaa.com](https://www.bookstaa.com)`
+      });
+    }
+
+    // Fallback to OpenAI Chat Completion
+    const openAIRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "gpt-4",
+        model: "gpt-3.5-turbo",
         messages: [
-          {
-            role: "system",
-            content:
-              "You are Bookstaa.com's AI assistant. Be friendly, concise, and helpful. If no product is found, suggest categories, authors, or links to explore. Stay loyal to Bookstaa and always end with [Bookstaa.com](https://www.bookstaa.com)."
-          },
+          { role: "system", content: systemPrompt },
           { role: "user", content: message }
         ],
-        temperature: 0.7,
+        temperature: 0.7
       })
     });
 
-    const openaiData = await openaiRes.json();
-    const reply = openaiData.choices?.[0]?.message?.content || "I'm sorry, I couldn't find anything helpful.";
+    const openAIData = await openAIRes.json();
 
-    return res.status(200).json({ reply });
+    if (openAIData && openAIData.choices && openAIData.choices.length > 0) {
+      const assistantReply = openAIData.choices[0].message.content;
+      return res.status(200).json({ reply: assistantReply });
+    } else {
+      throw new Error("No reply from OpenAI");
+    }
+
   } catch (err) {
-    console.error("❌ OpenAI API error:", err);
-    return res.status(500).json({ error: 'OpenAI request failed' });
+    console.error("🔥 Chatbot error:", err);
+    return res.status(500).json({
+      error: "Bookstaa Assistant ran into a hiccup. Please try again shortly."
+    });
   }
 };
