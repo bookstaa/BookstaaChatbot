@@ -45,15 +45,26 @@ module.exports = async (req, res) => {
   try {
     // ✅ Use smart fuzzy search from local product JSON
     const results = searchBooks(normalized, maxPrice);
+    const matchedAuthor = results.length > 0 && results[0].metafields?.author01;
+const uniqueAuthor = matchedAuthor ? results[0].metafields.author01 : null;
+
 
     if (results && results.length > 0) {
       const cards = results.slice(0, 10).map(p => {
         return `📘 [**${p.title}**](https://www.bookstaa.com/products/${p.handle})\n*by ${p.metafields?.author01 || p.vendor}*\n🗂️ ${p.metafields?.subcategory || ''} | 🏷️ ${p.tags?.join(', ')}\n💬 *${p.metafields?.language || ''}, ${p.metafields?.pages_in_the_book || ''} pages*\n💰 ₹${p.price}`;
       });
 
-      return res.status(200).json({
-        reply: `${cards.join('\n\n')}\n\n🛒 Browse more at [Bookstaa.com](https://www.bookstaa.com)`
-      });
+     let intro = '';
+if (uniqueAuthor) {
+  intro = `📚 Showing books by **${uniqueAuthor}**:\n\n`;
+} else {
+  intro = `📘 Here are some books you might like:\n\n`;
+}
+
+return res.status(200).json({
+  reply: `${intro}${cards.join('\n\n')}\n\n🛒 Browse more at [Bookstaa.com](https://www.bookstaa.com)`
+});
+
     }
 
     if (maxPrice) {
