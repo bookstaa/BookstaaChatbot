@@ -1,7 +1,7 @@
 const fetch = require('node-fetch');
 
 const STORE_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
-const STORE_API_TOKEN = process.env.SHOPIFY_STOREFRONT_TOKEN_KEY;
+const STORE_API_TOKEN = process.env.SHOPIFY_STOREFRONT_API_KEY;
 
 async function fetchMatchingProducts(query) {
   try {
