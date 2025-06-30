@@ -1,6 +1,6 @@
 const fetch = require('node-fetch');
 
-const SHOPIFY_DOMAIN = process.env.SHOPIFY_DOMAIN;
+const SHOPIFY_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
 const SHOPIFY_API_KEY = process.env.SHOPIFY_STOREFRONT_API_TOKEN;
 
 module.exports = async (req, res) => {
