@@ -10,15 +10,18 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Invalid message input' });
   }
 
-  const query = message.trim();
+  // 🔧 NEW SECTION: Handle greetings & human-style input
+  const raw = message.toLowerCase().trim();
 
-  // 🔧 NEW SECTION: Handle friendly human conversations like greetings
-  const isGreeting = /^(hi|hello|hey|how are you|bye|goodbye|thanks?)$/i.test(query);
+  const isGreeting = /(hello|hi|hey|how are you|thanks|thank you|bye|goodbye|namaste|yo|greetings)/i.test(raw);
   if (isGreeting) {
     return res.status(200).json({
-      reply: `👋 Hello! I’m your friendly Bookstaa assistant.\n\nAsk me anything about books, categories, or even order updates. You can say things like:\n• "Show me Yoga books"\n• "Best astrology titles"\n• "Track my order"`
+      reply: `👋 Hi! I’m your reading assistant at Bookstaa.\n\nYou can:\n• Search for topics like "Yoga books" or "Best astrology titles"\n• Ask about your order by typing "Track order"\n\nLet me know how I can help!`
     });
   }
+
+  const keyword = raw.replace(/(show me|please|i want|give me|can you|find|books|titles|suggest|recommend|related to|about|of|on|by|for)/g, '').trim();
+  const query = keyword || message.trim();
   // 🔧 END NEW SECTION
 
   try {
