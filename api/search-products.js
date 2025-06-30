@@ -8,7 +8,7 @@ module.exports = async (req, res) => {
   }
 
   const storeDomain = process.env.SHOPIFY_STORE_DOMAIN; // e.g., 'b80e25.myshopify.com'
-  const storefrontAccessToken = process.env.SHOPIFY_STOREFRONT_API_KEY; // your secure token
+  const storefrontAccessToken = process.env.SHOPIFY_STOREFRONT_API_TOKEN; // your secure token
 
   const gqlQuery = {
     query: `
