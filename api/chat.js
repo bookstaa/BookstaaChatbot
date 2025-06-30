@@ -1,6 +1,6 @@
 const fetch = require('node-fetch');
 
-// ✅ Bookstaa Chatbot Handler — Smarter, Intent-Aware, and Human-like
+// ✅ Bookstaa Chatbot Handler — Smarter, Intent-Aware, and Human-like with OpenAI fallback
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -59,8 +59,38 @@ module.exports = async (req, res) => {
       });
     }
 
+    // 🧠 Final fallback — Ask OpenAI to respond as Bookstaa’s assistant
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: `You are Bookstaa’s helpful reading assistant. You ONLY respond based on Bookstaa’s book catalog, store info, order policies, and product data. Always be warm, clear, and helpful. Avoid recommending unavailable items. If a query is vague, ask politely for more info.`
+          },
+          {
+            role: 'user',
+            content: query
+          }
+        ],
+        temperature: 0.7
+      })
+    });
+
+    const openaiData = await openaiResponse.json();
+    const assistantReply = openaiData?.choices?.[0]?.message?.content;
+
+    if (assistantReply) {
+      return res.status(200).json({ reply: assistantReply });
+    }
+
   } catch (err) {
-    console.error('Search API error:', err.message);
+    console.error('Search API or OpenAI error:', err.message);
   }
 
   // 🤖 Friendly fallback if nothing matched
