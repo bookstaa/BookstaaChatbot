@@ -1,7 +1,7 @@
 const fetch = require('node-fetch');
 
 module.exports = async (req, res) => {
-  const storeDomain = process.env.SHOPIFY_STORE_DOMAIN;
+  const storeDomain = 'b80e25.myshopify.com';
   const storefrontAccessToken = process.env.SHOPIFY_STOREFRONT_API_KEY;
 
   const gqlQuery = {
