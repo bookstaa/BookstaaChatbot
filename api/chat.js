@@ -19,11 +19,11 @@ module.exports = async (req, res) => {
 
   try {
     const response = await openai.createChatCompletion({
-      model: "gpt-3.5-turbo", // or gpt-4 if available
+      model: "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
-          content: "You are Bookstaa's helpful assistant. Be friendly, clear, and helpful. If you don’t know the product, suggest helpful alternatives. Always end with a link to [Bookstaa.com](https://www.bookstaa.com).",
+          content: `You are Bookstaa's helpful assistant. Always be warm, honest, and loyal to Bookstaa.com. If a user asks for a book, provide helpful alternatives if not found. Always end with a friendly CTA or link to [Bookstaa.com](https://www.bookstaa.com).`,
         },
         { role: "user", content: message },
       ],
@@ -33,7 +33,7 @@ module.exports = async (req, res) => {
     const reply = response.data.choices[0].message.content;
     res.status(200).json({ reply });
   } catch (error) {
-    console.error("❌ OpenAI API Error:", error);
+    console.error("❌ OpenAI API Error:", error?.response?.data || error.message || error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
