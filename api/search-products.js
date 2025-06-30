@@ -1,8 +1,19 @@
 const fetch = require('node-fetch');
 
 module.exports = async (req, res) => {
-  const storeDomain = 'b80e25.myshopify.com';
-  const storefrontAccessToken = process.env.SHOPIFY_STOREFRONT_API_KEY;
+  const storeDomain = process.env.SHOPIFY_STORE_DOMAIN;
+  const storefrontAccessToken = process.env.SHOPIFY_STOREFRONT_API_TOKEN;
+
+  console.log("🔍 Testing Storefront API connection...");
+  console.log("🌐 Domain:", storeDomain);
+  console.log("🔑 Token present:", !!storefrontAccessToken);
+
+  // Early check
+  if (!storeDomain || !storefrontAccessToken) {
+    return res.status(500).json({
+      error: 'Missing Shopify domain or token in environment variables'
+    });
+  }
 
   const gqlQuery = {
     query: `{ shop { name } }`
