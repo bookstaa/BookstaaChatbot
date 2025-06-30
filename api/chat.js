@@ -10,18 +10,15 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Invalid message input' });
   }
 
-  // 🔧 NEW SECTION: Handle greetings & human-style input
-  const raw = message.toLowerCase().trim();
+  const query = message.trim();
 
-  const isGreeting = /(hello|hi|hey|how are you|thanks|thank you|bye|goodbye|namaste|yo|greetings)/i.test(raw);
+  // 🔧 NEW SECTION: Handle friendly human conversations like greetings
+  const isGreeting = /^(hi|hello|hey|how are you|bye|goodbye|thanks?|thank you|namaste|hello there)$/i.test(query);
   if (isGreeting) {
     return res.status(200).json({
-      reply: `👋 Hi! I’m your reading assistant at Bookstaa.\n\nYou can:\n• Search for topics like "Yoga books" or "Best astrology titles"\n• Ask about your order by typing "Track order"\n\nLet me know how I can help!`
+      reply: `👋 Hello! I’m your friendly reading assistant from Bookstaa.\n\nI’m here to help you find books, authors, and topics that interest you — or even track your orders.\n\nTry asking:\n• *"Show me Yoga books"* 🧘‍♂️\n• *"Track my order"* 📦\n• *"Best astrology books"* 🔮\n\nLet me know how I can assist you today!`
     });
   }
-
-  const keyword = raw.replace(/(show me|please|i want|give me|can you|find|books|titles|suggest|recommend|related to|about|of|on|by|for)/g, '').trim();
-  const query = keyword || message.trim();
   // 🔧 END NEW SECTION
 
   try {
@@ -40,7 +37,7 @@ module.exports = async (req, res) => {
       });
 
       return res.status(200).json({
-        reply: `${cards.join('\n\n')}\n\n🛒 Browse more on [Bookstaa.com](https://www.bookstaa.com)`
+        reply: `${cards.join('\n\n')}\n\n🛒 [Explore more on Bookstaa.com](https://www.bookstaa.com)`
       });
     }
 
@@ -49,14 +46,16 @@ module.exports = async (req, res) => {
     // Don’t block fallback
   }
 
-  // 🧠 Friendly fallback if no product match
+  // 🧠 FRIENDLY FALLBACK RESPONSE — Updated to be more conversational
   const fallbackMessage = `
-🤖 I couldn't find an exact match for that, but here’s how I can help:
-• Search by **book title**, **author name**, or **ISBN**
-• Ask for **categories** like “Yoga”, “Astrology”, “Kids books”
-• Type **Order Status** or **Track Order** to get delivery help
+🤖 I couldn't find an exact match for that, but I’m here to help!
 
-📚 Explore more books on [Bookstaa.com](https://www.bookstaa.com)
+Here’s what you can try:
+• Search by **book title**, **author name**, or **ISBN**
+• Ask for topics like “Yoga”, “Astrology”, or “Children’s books”
+• Type **Order Status** or **Track Order** to get delivery updates
+
+🔍 Or just explore more books at [Bookstaa.com](https://www.bookstaa.com) — there’s something for everyone!
 `;
 
   return res.status(200).json({
