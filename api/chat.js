@@ -1,5 +1,6 @@
 const fetch = require('node-fetch');
 
+// ✅ Bookstaa Chatbot Handler — Smarter, Intent-Aware, and Human-like
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -10,110 +11,68 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Invalid message input' });
   }
 
-  let query = message.trim().toLowerCase();
+  const query = message.trim();
+  const normalized = query.toLowerCase();
 
-  // 🎯 INTENT NORMALIZATION & HUMAN-LIKE UNDERSTANDING
-  const intentMap = {
-    // Greetings
-    'hello': 'hello', 'hi': 'hello', 'hey': 'hello', 'namaste': 'hello',
-    'hello there': 'hello', 'how are you': 'hello', 'kya haal hai': 'hello', 'kaise ho': 'hello',
-
-    // Order Tracking
-    'track order': 'track-order', 'order status': 'track-order', 'where is my order': 'track-order',
-    'order update': 'track-order', 'parcel status': 'track-order',
-
-    // Categories - general
-    'children books': 'children', 'kids books': 'children',
-    'vedic books': 'vedic', 'yoga books': 'yoga', 'ayurveda books': 'ayurveda',
-    'philosophy books': 'philosophy', 'darshan': 'philosophy',
-    'natya shastra': 'natya', 'natyashastra': 'natya', 'natya': 'natya',
-    'astrology books': 'astrology', 'jyotish': 'astrology',
-
-    // Direct questions
-    'what books do you have': 'list-books',
-    'show me books': 'list-books', 'browse books': 'list-books',
-    'recommend a book': 'recommend', 'suggest a book': 'recommend',
-
-    // Small talk
-    'who are you': 'about', 'what is bookstaa': 'about', 'tell me about you': 'about'
-  };
-
-  if (intentMap[query]) query = intentMap[query];
-
-  // 🤖 Respond to greetings
-  if (query === 'hello') {
+  // ✅ GREETING INTENT DETECTION
+  const isGreeting = /\b(hi|hello|hey|namaste|how are you|kya haal|hello there)\b/i.test(normalized);
+  if (isGreeting) {
     return res.status(200).json({
-      reply: `👋 Hi! I’m your reading assistant at Bookstaa.
-
-You can ask me to:
-• Show books by title, author, or category
-• Track your order 📦
-• Recommend a good read 📚
-
-Try asking:
-• *"Best astrology books"*
-• *"Books on Patanjali Yoga"*
-• *"Where is my order"*`
+      reply: `👋 Hello! I’m your friendly reading assistant from Bookstaa.\n\nI’m here to help you find books, authors, topics — or even track your orders.\n\nTry asking:\n• *\"Show me Yoga books\"* 🧘‍♂️\n• *\"Track my order\"* 📦\n• *\"Best astrology books\"* 🔮`
     });
   }
 
-  // 📦 Respond to order tracking intent
-  if (query === 'track-order') {
+  // ✅ INTENT: ORDER TRACKING
+  const orderIntent = /\b(order status|track order|where is my order|order update)\b/i;
+  if (orderIntent.test(normalized)) {
     return res.status(200).json({
-      reply: `📦 To track your order, please enter your AWB (tracking number) from Delhivery.
-
-Use our tracking tool here: [Track Order](https://www.bookstaa.com/pages/track-order)`
+      reply: `📦 To track your order, just enter your AWB or tracking number on our [Order Tracking Page](https://www.bookstaa.com/apps/order-tracking).`
     });
   }
 
-  // 🧠 Respond to general inquiry about Bookstaa
-  if (query === 'about') {
-    return res.status(200).json({
-      reply: `📚 Bookstaa is your one-stop bookstore featuring a curated selection of Indian knowledge systems — from Vedic wisdom and Yoga to Astrology, Ayurveda, Philosophy, Sanskrit literature and more.
-
-We bring books from top publishers like Motilal Banarsidass & V&S Publishers to readers worldwide.`
-    });
-  }
-
-  // 📚 If user wants to browse books or recommendations
-  if (query === 'list-books' || query === 'recommend') {
-    query = 'books'; // broad fallback to show some books
-  }
+  // ✅ Extract keywords for fuzzy matching
+  const hasPriceUnder = normalized.match(/(?:under|below|less than)\s*₹?(\d+)/i);
+  const maxPrice = hasPriceUnder ? parseInt(hasPriceUnder[1], 10) : null;
 
   try {
-    // 🔍 Search books using Shopify API endpoint
-    const searchResponse = await fetch(`${process.env.BASE_URL || 'https://bookstaa-chatbot.vercel.app'}/api/search-products?q=${encodeURIComponent(query)}`);
-    const searchData = await searchResponse.json();
+    // 📦 Call enhanced product search API
+    const searchParams = new URLSearchParams({ q: query });
+    if (maxPrice) searchParams.append('maxPrice', maxPrice);
 
-    if (searchData && Array.isArray(searchData.products) && searchData.products.length > 0) {
-      const cards = searchData.products.map(product => {
-        return `
-🛍️ [**${product.title}**](${product.link})
-*by ${product.author}*
-![${product.altText}](${product.image})
-💰 **Price:** ₹${product.price} ${product.currency}`.trim();
+    const response = await fetch(`${process.env.BASE_URL || 'https://bookstaa-chatbot.vercel.app'}/api/search-products?${searchParams}`);
+    const data = await response.json();
+
+    if (data && data.products && data.products.length > 0) {
+      const cards = data.products.map(p => {
+        return `🛍️ [**${p.title}**](${p.link})\n*by ${p.author}*\n![${p.altText}](${p.image})\n💰 **Price:** ₹${p.price} ${p.currency}`;
       });
 
       return res.status(200).json({
-        reply: `${cards.join('\n\n')}
-\n🛒 Browse more at [Bookstaa.com](https://www.bookstaa.com)`
+        reply: `${cards.join('\n\n')}\n\n🛒 Browse more on [Bookstaa.com](https://www.bookstaa.com)`
+      });
+    }
+
+    // 🔁 Fallback: if no result but query is price-specific
+    if (maxPrice) {
+      return res.status(200).json({
+        reply: `🤖 I couldn’t find books under ₹${maxPrice}, but you can try browsing [Bookstaa.com](https://www.bookstaa.com) for a wider range of books.`
       });
     }
 
   } catch (err) {
     console.error('Search API error:', err.message);
-    // Continue to fallback
   }
 
-  // 🤷‍♂️ Fallback if nothing matched
-  return res.status(200).json({
-    reply: `🤖 I couldn’t find anything for that, but I’m still learning!
+  // 🤖 Friendly fallback if nothing matched
+  const fallbackReply = `
+🤖 I couldn’t find anything for that, but I’m still learning!
 
 Here’s what you can try:
 • Search by **book title**, **author name**, or **ISBN**
-• Ask about categories like "Yoga", "Philosophy", "Astrology"
+• Ask about categories like \"Yoga\", \"Philosophy\", \"Astrology\"
 • Type **Order Status** to track your delivery
 
-🔍 Or explore more books at [Bookstaa.com](https://www.bookstaa.com)`
-  });
+🔍 Or explore more books at [Bookstaa.com](https://www.bookstaa.com)`;
+
+  return res.status(200).json({ reply: fallbackReply });
 };
