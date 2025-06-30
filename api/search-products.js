@@ -10,10 +10,13 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Missing search query' });
   }
 
+  const searchTerm = q.trim().toLowerCase();
+  const safeQuery = q.replace(/"/g, '\\"');
+
   try {
     const query = `
       {
-        products(first: 100, query: "${q}") {
+        products(first: 100, query: "${safeQuery}") {
           edges {
             node {
               id
@@ -60,7 +63,6 @@ module.exports = async (req, res) => {
       return res.status(500).json({ error: 'Shopify API error', details: data.errors || [] });
     }
 
-    const searchTerm = q.trim().toLowerCase();
     const products = data.data.products.edges
       .map(edge => edge.node)
       .filter(product => {
@@ -68,7 +70,7 @@ module.exports = async (req, res) => {
         const inTags = product.tags.some(tag => tag.toLowerCase().includes(searchTerm));
         const inProductType = product.productType?.toLowerCase().includes(searchTerm);
         const inVendor = product.vendor?.toLowerCase().includes(searchTerm);
-        const fuzzyMatch = product.title.toLowerCase().startsWith(searchTerm.slice(0, 4)); // fuzzy first 4 chars
+        const fuzzyMatch = product.title.toLowerCase().startsWith(searchTerm.slice(0, 4));
 
         return inTitle || inTags || inProductType || inVendor || fuzzyMatch;
       })
