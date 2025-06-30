@@ -1,40 +1,50 @@
-const fetch = require('node-fetch');
+const fetch = require("node-fetch");
 
 module.exports = async (req, res) => {
   const { q } = req.query;
 
-  if (!q || q.trim() === '') {
-    return res.status(400).json({ error: 'Missing query (q) parameter' });
+  if (!q || typeof q !== "string" || q.trim().length < 3) {
+    return res.status(400).json({ error: "Query too short or missing." });
   }
 
-  const storeDomain = process.env.SHOPIFY_STORE_DOMAIN; // e.g., 'b80e25.myshopify.com'
-  const storefrontAccessToken = process.env.SHOPIFY_STOREFRONT_API_TOKEN; // your secure token
+  const searchTerm = q.trim().toLowerCase();
+  const SHOPIFY_API_ENDPOINT = `https://${process.env.SHOPIFY_STORE_DOMAIN}/api/2023-10/graphql.json`;
+  const STOREFRONT_TOKEN = process.env.SHOPIFY_STOREFRONT_API_TOKEN;
 
-  const gqlQuery = {
-    query: `
-      {
-        products(first: 10, query: "${q}") {
-          edges {
-            node {
-              title
-              handle
-              vendor
-              tags
-              images(first: 1) {
-                edges {
-                  node {
-                    originalSrc
-                    altText
-                  }
+  const query = `
+    query {
+      products(first: 100, query: "${searchTerm}") {
+        edges {
+          node {
+            id
+            title
+            handle
+            description
+            vendor
+            tags
+            metafields(first: 5) {
+              edges {
+                node {
+                  namespace
+                  key
+                  value
                 }
               }
-              variants(first: 1) {
-                edges {
-                  node {
-                    price {
-                      amount
-                      currencyCode
-                    }
+            }
+            images(first: 1) {
+              edges {
+                node {
+                  url
+                  altText
+                }
+              }
+            }
+            variants(first: 1) {
+              edges {
+                node {
+                  price {
+                    amount
+                    currencyCode
                   }
                 }
               }
@@ -42,47 +52,63 @@ module.exports = async (req, res) => {
           }
         }
       }
-    `
-  };
+    }
+  `;
 
   try {
-    const response = await fetch(`https://${storeDomain}/api/2023-10/graphql.json`, {
-      method: 'POST',
+    const response = await fetch(SHOPIFY_API_ENDPOINT, {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Storefront-Access-Token': storefrontAccessToken,
+        "X-Shopify-Storefront-Access-Token": STOREFRONT_TOKEN,
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(gqlQuery)
+      body: JSON.stringify({ query }),
     });
 
     const result = await response.json();
 
     if (result.errors) {
       console.error("🛑 Shopify GraphQL Error:", result.errors);
-      return res.status(500).json({ error: 'Shopify API error', details: result.errors });
+      return res.status(500).json({ error: "Shopify API error", details: result.errors });
     }
 
-    const edges = result.data?.products?.edges || [];
+    const edges = result.data.products.edges;
 
-    if (edges.length === 0) {
-      return res.status(200).json({ products: [], message: "No products found" });
-    }
+    const filteredProducts = edges.filter(({ node }) => {
+      const title = node.title.toLowerCase();
+      const description = (node.description || "").toLowerCase();
+      const vendor = (node.vendor || "").toLowerCase();
+      const tags = node.tags.map(t => t.toLowerCase());
+      const meta = node.metafields.edges.map(e => e.node.value.toLowerCase());
 
-    const products = edges.map(({ node }) => ({
-      title: node.title,
-      author: node.vendor || 'Bookstaa',
-      link: `https://www.bookstaa.com/products/${node.handle}`,
-      image: node.images?.edges?.[0]?.node?.originalSrc || '',
-      altText: node.images?.edges?.[0]?.node?.altText || '',
-      price: node.variants?.edges?.[0]?.node?.price?.amount || '',
-      currency: node.variants?.edges?.[0]?.node?.price?.currencyCode || '',
-      tags: node.tags || []
-    }));
+      return (
+        title.includes(searchTerm) ||
+        vendor.includes(searchTerm) ||
+        description.includes(searchTerm) ||
+        tags.some(tag => tag.includes(searchTerm)) ||
+        meta.some(m => m.includes(searchTerm))
+      );
+    });
 
-    res.status(200).json({ products });
+    const products = filteredProducts.slice(0, 10).map(({ node }) => {
+      const variant = node.variants.edges[0]?.node;
+      const image = node.images.edges[0]?.node;
 
-  } catch (error) {
-    console.error("❌ Product Search Failed:", error);
-    res.status(500).json({ error: 'Internal server error' });
+      return {
+        title: node.title,
+        author: node.vendor,
+        link: `https://www.bookstaa.com/products/${node.handle}`,
+        image: image?.url,
+        altText: image?.altText || node.title,
+        price: variant?.price?.amount,
+        currency: variant?.price?.currencyCode,
+        tags: node.tags,
+      };
+    });
+
+    return res.status(200).json({ products });
+  } catch (err) {
+    console.error("❌ Product search error:", err);
+    return res.status(500).json({ error: "Server error during product search" });
   }
 };
