@@ -9,6 +9,13 @@ module.exports = async (req, res) => {
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ error: 'Invalid message input' });
   }
+const isGreeting = /^(hi|hello|hey|how are you|bye|goodbye|thanks?)$/i.test(query);
+
+if (isGreeting) {
+  return res.status(200).json({
+    reply: `👋 Hi there! I’m Bookstaa’s reading assistant. You can ask me about books, authors, categories, or your order status. Try typing something like “Yoga books” or “Order Status”.`
+  });
+}
 
   const query = message.trim();
 
