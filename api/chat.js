@@ -9,15 +9,17 @@ module.exports = async (req, res) => {
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ error: 'Invalid message input' });
   }
-const isGreeting = /^(hi|hello|hey|how are you|bye|goodbye|thanks?)$/i.test(query);
-
-if (isGreeting) {
-  return res.status(200).json({
-    reply: `👋 Hi there! I’m Bookstaa’s reading assistant. You can ask me about books, authors, categories, or your order status. Try typing something like “Yoga books” or “Order Status”.`
-  });
-}
 
   const query = message.trim();
+
+  // 🔧 NEW SECTION: Handle friendly human conversations like greetings
+  const isGreeting = /^(hi|hello|hey|how are you|bye|goodbye|thanks?)$/i.test(query);
+  if (isGreeting) {
+    return res.status(200).json({
+      reply: `👋 Hello! I’m your friendly Bookstaa assistant.\n\nAsk me anything about books, categories, or even order updates. You can say things like:\n• "Show me Yoga books"\n• "Best astrology titles"\n• "Track my order"`
+    });
+  }
+  // 🔧 END NEW SECTION
 
   try {
     // 🔍 Try fuzzy product search via search-products.js
@@ -46,14 +48,12 @@ if (isGreeting) {
 
   // 🧠 Friendly fallback if no product match
   const fallbackMessage = `
-❓ I couldn’t find anything for that. You can try:
-• Searching by **book title**, **author name**, or **ISBN**
-• Asking for **categories** like “Yoga”, “Astrology”, “Kids books”
-• Typing **Order Status** or **Track Order** to get help with deliveries
+🤖 I couldn't find an exact match for that, but here’s how I can help:
+• Search by **book title**, **author name**, or **ISBN**
+• Ask for **categories** like “Yoga”, “Astrology”, “Kids books”
+• Type **Order Status** or **Track Order** to get delivery help
 
-🔎 You can also [Track Your Order](https://www.bookstaa.com/pages/track-order)
-
-Explore more books on [Bookstaa.com](https://www.bookstaa.com)
+📚 Explore more books on [Bookstaa.com](https://www.bookstaa.com)
 `;
 
   return res.status(200).json({
