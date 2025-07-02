@@ -7,9 +7,10 @@ const isGreeting = (input) => {
     'what can you do', 'who are you', 'kya kar rahe ho', 'yo', 'hey',
     'kaise ho', 'tum kaun ho', 'can you help', 'what is this', 'bookstaa'
   ];
-  const norm = input.toLowerCase();
+  const norm = input.toLowerCase().replace(/[^a-z0-9\s]/gi, '').trim();
   return greetings.some(greet => norm.includes(greet));
 };
+
 
 module.exports = async (req, res) => {
   try {
