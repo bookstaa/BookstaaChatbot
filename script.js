@@ -1,6 +1,10 @@
 document.getElementById('send-button').addEventListener('click', sendMessage);
-document.getElementById('user-input').addEventListener('keypress', e => {
-  if (e.key === 'Enter') sendMessage();
+
+document.getElementById('user-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault(); // Prevent newline
+    sendMessage();
+  }
 });
 
 async function sendMessage() {
@@ -55,6 +59,11 @@ function showAssistantMessage(text) {
 // 🆕 Show sliding product cards using existing CSS
 function showProductSlider(products) {
   const chatBox = document.getElementById('chat-box');
+
+  // ✅ Clear any previous sliders
+  const oldSliders = chatBox.querySelectorAll('.product-slider');
+  oldSliders.forEach(el => el.remove());
+
   const wrapper = document.createElement('div');
   wrapper.className = 'product-slider';
 
