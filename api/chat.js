@@ -65,9 +65,27 @@ You can try:
 • Asking for **categories** like *astrology*, *Vedic studies*, or *bestsellers*
 
 We're adding new books regularly at [Bookstaa.com](https://bookstaa.com) 📚`;
+      return res.status(200).json({ type: 'text', text: reply });
     }
 
-    // ✅ Return ChatGPT reply or fallback
+    // ✅ Step 4: Re-check using reply keywords from ChatGPT
+    const fallbackSearchRes = await fetch(`${baseURL}/api/search-products`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: reply }),
+    });
+
+    const fallbackSearchData = await fallbackSearchRes.json();
+
+    if (fallbackSearchData.products && fallbackSearchData.products.length > 0) {
+      return res.status(200).json({
+        type: 'products',
+        products: fallbackSearchData.products,
+        text: reply, // include GPT reply for context
+      });
+    }
+
+    // ✅ Return only ChatGPT fallback if still no product found
     return res.status(200).json({ type: 'text', text: reply });
 
   } catch (err) {
