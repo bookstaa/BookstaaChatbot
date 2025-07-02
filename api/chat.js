@@ -55,7 +55,8 @@ Now craft a helpful reply using a conversational tone.
     });
 
     const gptData = await gptRes.json();
-    const reply = gptData.choices?.[0]?.message?.content?.trim();
+    console.log('🧠 GPT fallback response:', JSON.stringify(gptData, null, 2));
+const reply = gptData.choices?.[0]?.message?.content?.trim();
 
     if (!reply) {
       return res.status(200).json({
