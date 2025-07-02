@@ -7,22 +7,39 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="chat-container">
-    <div id="chat-box" class="chat-box"></div>
-    <div class="suggested-prompts">
-  <button class="suggested-prompt">📖 Search by Title</button>
-  <button class="suggested-prompt">🔮 Best books on <keywords></button>
-  <button class="suggested-prompt">💸 Any combo offers?</button>
-  <button class="suggested-prompt">📦 Where is my order?</button>
-  <button class="suggested-prompt">🟢 Connect to WhatsApp LIVE CHAT</button>
-</div>
-    <div class="input-container">
-  <input type="text" id="user-input" placeholder="Type your message..." />
-  <!-- Keep this exactly like you originally had -->
-<button onclick="sendMessage()">Send</button>
-</div>
-  </div>
-  <div class="branding">🤖 Powered by ChatGPT · Bookstaa.com</div>
+  <main class="chat-container" role="main" aria-label="Bookstaa Chatbot">
+    
+    <!-- 📦 Chat Messages -->
+    <section id="chat-box" class="chat-box" aria-live="polite" aria-atomic="true"></section>
+
+    <!-- 💡 Suggested Prompts -->
+    <nav class="suggested-prompts" aria-label="Quick Suggestions">
+      <button class="suggested-prompt">📖 Search by Title</button>
+      <button class="suggested-prompt">🔮 Best books on Astrology</button>
+      <button class="suggested-prompt">💸 Any combo offers?</button>
+      <button class="suggested-prompt">📦 Where is my order?</button>
+      <button class="suggested-prompt">🟢 Connect to WhatsApp LIVE CHAT</button>
+    </nav>
+
+    <!-- ⌨️ User Input -->
+    <div class="input-container" role="form" aria-label="Send message">
+      <input
+        type="text"
+        id="user-input"
+        placeholder="Type your message..."
+        aria-label="Your message"
+        autocomplete="off"
+      />
+      <button onclick="sendMessage()" aria-label="Send Message">Send</button>
+    </div>
+  </main>
+
+  <!-- 🔋 Branding Footer -->
+  <footer class="branding">
+    🤖 Powered by ChatGPT · <a href="https://www.bookstaa.com" target="_blank" style="color:inherit;text-decoration:underline;">Bookstaa.com</a>
+  </footer>
+
+  <!-- 🚀 Script Loader -->
   <script src="script.js"></script>
 </body>
 </html>
