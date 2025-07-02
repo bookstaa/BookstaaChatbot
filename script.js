@@ -1,4 +1,4 @@
-// 📤 Send on Enter key (without Shift)
+// 📦 Section 1: Setup listeners for Enter key and prompt buttons
 document.getElementById('user-input').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
@@ -6,7 +6,6 @@ document.getElementById('user-input').addEventListener('keydown', e => {
   }
 });
 
-// 💡 Suggested prompt buttons
 document.querySelectorAll('.suggested-prompt').forEach(btn => {
   btn.addEventListener('click', () => {
     document.getElementById('user-input').value = btn.innerText;
@@ -14,7 +13,7 @@ document.querySelectorAll('.suggested-prompt').forEach(btn => {
   });
 });
 
-// 🚀 Main function to handle user input
+// 📦 Section 2: Main sendMessage function
 async function sendMessage() {
   const input = document.getElementById('user-input');
   const message = input.value.trim();
@@ -22,7 +21,6 @@ async function sendMessage() {
 
   showUserMessage(message);
   input.value = '';
-
   showTypingIndicator(true);
 
   try {
@@ -35,15 +33,13 @@ async function sendMessage() {
     const data = await res.json();
     showTypingIndicator(false);
 
-    // 🤖 Show assistant reply if available
+    // 📦 Section 3: Handle assistant response types
     if (data.type === 'products' && data.products?.length) {
-      if (data.text) showAssistantMessage(data.text); // ✅ Show GPT intro
-      showProductSlider(data.products);
-    } 
-    else if (data.type === 'text' && data.text) {
-      showAssistantMessage(data.text); // ✅ Fallback or greeting
-    } 
-    else {
+      if (data.text) showAssistantMessage(data.text); // Intro from GPT
+      showProductSlider(data.products);               // Product cards
+    } else if (data.type === 'text' && data.text) {
+      showAssistantMessage(data.text);                // Greeting or fallback
+    } else {
       showAssistantMessage(`
 ❓ I couldn’t find anything related to your query.
 
@@ -56,13 +52,13 @@ Try:
     }
 
   } catch (err) {
-    console.error('Chat error:', err);
+    console.error('💥 Chat error:', err);
     showTypingIndicator(false);
     showAssistantMessage('⚠️ Something went wrong. Please try again.');
   }
-} // ✅ CLOSING this function — you missed this in your code!
+}
 
-// 💬 Show user message
+// 📦 Section 4: Render user message
 function showUserMessage(text) {
   const chatBox = document.getElementById('chat-box');
   const msg = document.createElement('div');
@@ -72,17 +68,17 @@ function showUserMessage(text) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 🤖 Show assistant message
+// 📦 Section 5: Render assistant message with markdown
 function showAssistantMessage(text) {
   const chatBox = document.getElementById('chat-box');
   const msg = document.createElement('div');
   msg.className = 'chat assistant';
-  msg.innerHTML = marked.parse(text); // Markdown support
+  msg.innerHTML = marked.parse(text); // Requires marked.js
   chatBox.appendChild(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 🕐 Typing dots
+// 📦 Section 6: Typing indicator (animated dots)
 function showTypingIndicator(show) {
   const chatBox = document.getElementById('chat-box');
   const existing = document.getElementById('typing-indicator');
@@ -98,11 +94,11 @@ function showTypingIndicator(show) {
   }
 }
 
-// 🛍️ Show horizontal product card slider
+// 📦 Section 7: Show product cards (horizontal slider layout)
 function showProductSlider(products) {
   const chatBox = document.getElementById('chat-box');
 
-  // Remove previous sliders
+  // Remove old product sliders
   chatBox.querySelectorAll('.product-slider').forEach(el => el.remove());
 
   const wrapper = document.createElement('div');
@@ -134,10 +130,10 @@ function showProductSlider(products) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// ✂️ Truncate long text
+// 📦 Section 8: Truncate long text safely
 function truncateText(text, maxLength) {
   return text.length > maxLength ? text.slice(0, maxLength - 1) + '…' : text;
 }
 
-// 🌍 Expose globally
+// 📦 Section 9: Make globally callable
 window.sendMessage = sendMessage;
