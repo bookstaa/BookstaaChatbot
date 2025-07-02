@@ -7,6 +7,14 @@ document.getElementById('user-input').addEventListener('keydown', e => {
   }
 });
 
+// 🆕 Click prompt to send
+document.querySelectorAll('.suggested-prompt').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('user-input').value = btn.innerText;
+    sendMessage();
+  });
+});
+
 async function sendMessage() {
   const input = document.getElementById('user-input');
   const message = input.value.trim();
@@ -14,6 +22,8 @@ async function sendMessage() {
 
   showUserMessage(message);
   input.value = '';
+
+  showTypingIndicator(true);
 
   try {
     const res = await fetch('/api/chat', {
@@ -24,6 +34,8 @@ async function sendMessage() {
 
     const data = await res.json();
 
+    showTypingIndicator(false);
+
     if (data.text) showAssistantMessage(data.text); // always show text if present
     if (data.type === 'products' && data.products?.length) {
       showProductSlider(data.products);
@@ -32,6 +44,7 @@ async function sendMessage() {
     }
   } catch (err) {
     console.error('Chat error:', err);
+    showTypingIndicator(false);
     showAssistantMessage('⚠️ Something went wrong. Please try again.');
   }
 }
@@ -56,11 +69,27 @@ function showAssistantMessage(text) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 🆕 Show sliding product cards using existing CSS
+// 🕐 Typing indicator (3 dots animation)
+function showTypingIndicator(show) {
+  const chatBox = document.getElementById('chat-box');
+  const existing = document.getElementById('typing-indicator');
+  if (existing) existing.remove();
+
+  if (show) {
+    const typing = document.createElement('div');
+    typing.id = 'typing-indicator';
+    typing.className = 'chat assistant';
+    typing.innerHTML = `<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>`;
+    chatBox.appendChild(typing);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+}
+
+// 🛍️ Show sliding product cards
 function showProductSlider(products) {
   const chatBox = document.getElementById('chat-box');
 
-  // ✅ Clear any previous sliders
+  // Remove old product sliders
   const oldSliders = chatBox.querySelectorAll('.product-slider');
   oldSliders.forEach(el => el.remove());
 
