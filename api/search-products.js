@@ -5,6 +5,7 @@ const SHOPIFY_STOREFRONT_API_TOKEN = process.env.SHOPIFY_STOREFRONT_API_TOKEN;
 
 const gql = String.raw;
 
+// 🔤 Normalize for matching
 function normalize(str) {
   return str?.toLowerCase().replace(/[^a-z0-9\s]/gi, '').trim();
 }
@@ -20,6 +21,7 @@ module.exports = async (req, res) => {
     const q = normalize(query);
     const fuzzy = q.slice(0, 5); // first 5 characters
 
+    // 📡 Fetch products with required metafields
     const response = await fetch(`https://${SHOPIFY_DOMAIN}/api/2024-04/graphql.json`, {
       method: 'POST',
       headers: {
@@ -40,11 +42,9 @@ module.exports = async (req, res) => {
                   description
                   tags
                   images(first: 1) {
-                    edges {
-                      node { url }
-                    }
+                    edges { node { url } }
                   }
-                  variants(first: 5) {
+                  variants(first: 10) {
                     edges {
                       node {
                         title
@@ -100,41 +100,32 @@ module.exports = async (req, res) => {
       const readersCategory = metafields['readers_category'] || '';
       const authorLocation = metafields['author_location'] || '';
 
-      // 🔍 Smart matching logic — in order of priority
+      // 🔍 Smart Search Logic: Follow BIBLE priority
       let match = false;
 
-      // 1. Title Match
-      if (title.includes(q)) match = true;
-
-      // 2. Author Match
-      else if (author.includes(q) || q.split(' ').every(word => author.includes(word))) match = true;
-
-      // 3. Metafield Match (readers_category, ISBN, language, author_location)
-      else if (
-        (isISBN && isbn.includes(q)) ||
+      if (title.includes(q)) {
+        match = true; // 1. Title Match
+      } else if (author.includes(q) || q.split(' ').every(word => author.includes(word))) {
+        match = true; // 2. Author Match
+      } else if (
+        (isISBN && isbn.includes(q)) ||           // ISBN exact match
         readersCategory.includes(q) ||
         language.includes(q) ||
         authorLocation.includes(q)
       ) {
-        match = true;
-      }
-
-      // 4. Tags, vendor, productType, description
-      else if (
+        match = true; // 3. Metafield Match
+      } else if (
         tags.some(tag => tag.includes(q)) ||
         vendor.includes(q) ||
         productType.includes(q) ||
         description.includes(q)
       ) {
-        match = true;
+        match = true; // 4. Tags, Vendor, Type, Description
+      } else if (title.startsWith(fuzzy) || author.startsWith(fuzzy)) {
+        match = true; // 5. Fuzzy Match
       }
 
-      // 5. Fuzzy match on title or author
-      else if (title.startsWith(fuzzy) || author.startsWith(fuzzy)) {
-        match = true;
-      }
-
-      // 📦 Get paperback variant only
+      // 📦 Pick Paperback variant only
       const variant = product.variants.edges.find(v =>
         normalize(v.node.title).includes('paperback')
       )?.node;
@@ -155,19 +146,25 @@ module.exports = async (req, res) => {
       }
     }
 
-    // 🛑 No results found — show helpful fallback
+    // 🛑 No Results Found
     if (results.length === 0) {
       return res.status(200).json({
         products: [],
-        text: `❓ No match found for **${query}**. Try again with a specific book title, author, or ISBN.\n\n📩 You can also email us at [feedback@bookstaa.com](mailto:feedback@bookstaa.com) to suggest or request a book!`,
+        text: `❓ No match found for **${query}**.
+
+Try searching by:
+• **Book title**, **author**, or **ISBN**
+• Example: "Yoga in Hindi", "Devdutt Pattanaik", "9781234567890"
+
+📩 Suggest a book at [feedback@bookstaa.com](mailto:feedback@bookstaa.com)`,
       });
     }
 
-    // ✅ Results found
-    res.status(200).json({ products: results });
+    // ✅ Found Products
+    return res.status(200).json({ products: results });
 
   } catch (err) {
     console.error('❌ search-products fatal error:', err);
-    res.status(500).json({ error: 'Search failed', details: err.message });
+    return res.status(500).json({ error: 'Search failed', details: err.message });
   }
 };
