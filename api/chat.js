@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
 
     const baseURL = req.headers.origin || 'https://bookstaa.com';
 
-    // ✅ Section: Greeting or general query — ONLY ChatGPT handles it
+    // Step 1: If greeting or general query — go straight to ChatGPT
 if (isGreeting(message)) {
   try {
     const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -36,28 +36,35 @@ if (isGreeting(message)) {
           {
             role: 'system',
             content:
-              'You are Bookstaa Chatbot — a friendly, loyal bookstore assistant. Greet users warmly. Answer basic questions like "hello", "who are you", or "how can you help" in a cheerful tone. You never suggest other websites.',
+              'You are Bookstaa Chatbot — a helpful, loyal assistant for an Indian bookstore. You help users discover books and answer general queries. You never recommend other websites. Always encourage the user to search by book title, author, or ISBN.',
           },
           { role: 'user', content: message },
         ],
-        temperature: 0.7,
+        temperature: 0.8,
       }),
     });
 
     const gptData = await gptRes.json();
-    const reply =
-      gptData.choices?.[0]?.message?.content?.trim() ||
-      `Hi there 👋 I'm your Bookstaa assistant. Ask me about books, authors, or anything else!`;
+    const reply = gptData?.choices?.[0]?.message?.content?.trim();
 
-    return res.status(200).json({ type: 'text', text: reply });
-  } catch (err) {
-    console.error('🛑 GPT greeting reply error:', err);
+    if (reply) {
+      return res.status(200).json({ type: 'text', text: reply });
+    } else {
+      console.error('⚠️ No reply from GPT:', gptData);
+      return res.status(200).json({
+        type: 'text',
+        text: `Hi there 👋 I’m your Bookstaa assistant! You can ask me about books by title, author, ISBN, or even ask in Hinglish.`,
+      });
+    }
+  } catch (e) {
+    console.error('💥 GPT greeting fail:', e);
     return res.status(200).json({
       type: 'text',
-      text: `Hi there 👋 I'm your Bookstaa assistant. Ask me about books, authors, or anything else!`,
+      text: `Hi 👋 I’m Bookstaa assistant. How can I help you discover books today?`,
     });
   }
 }
+
 
 
     // 2️⃣ PRIMARY SEARCH
