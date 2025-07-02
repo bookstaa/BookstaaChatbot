@@ -52,29 +52,29 @@ function showAssistantMessage(text) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 🎞️ Show products in slider format
+// 🆕 Show sliding product cards using existing CSS
 function showProductSlider(products) {
   const chatBox = document.getElementById('chat-box');
   const wrapper = document.createElement('div');
-  wrapper.className = 'chat product-slider-wrapper';
-
-  const slider = document.createElement('div');
-  slider.className = 'product-slider';
+  wrapper.className = 'product-slider';
 
   products.forEach(product => {
     const card = document.createElement('div');
     card.className = 'product-card';
+
     card.innerHTML = `
-      <img src="${product.image}" alt="${product.title}" />
-      <h4 title="${product.title}">${truncateText(product.title, 50)}</h4>
-      <p class="author">${product.author || ''}</p>
-      <p class="price">${product.discount ? `<span class="discount">${product.discount}</span>` : ''} ₹${product.price}</p>
-      <a href="${product.url}" target="_blank" class="view-btn">View</a>
+      <img class="product-img" src="${product.image}" alt="${product.title}" />
+      <div class="product-details">
+        <div class="product-title" title="${product.title}">${truncateText(product.title, 60)}</div>
+        <div class="product-author">${product.author || ''}</div>
+        <div class="product-price">${product.discount ? `<span class="discount">${product.discount}</span> ` : ''}${product.price}</div>
+        <a class="buy-now" href="${product.url}" target="_blank">View</a>
+      </div>
     `;
-    slider.appendChild(card);
+
+    wrapper.appendChild(card);
   });
 
-  wrapper.appendChild(slider);
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
