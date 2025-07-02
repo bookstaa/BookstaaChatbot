@@ -1,51 +1,52 @@
+// lib/smartSearch.js
 const fs = require('fs');
 const path = require('path');
 
-// ✅ Load all products from local JSON
 const allBooks = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../bookstaa-products.json'), 'utf-8')
 );
 
-// ✅ Normalize string for matching
+// Normalize for loose fuzzy matching
 const normalize = str =>
-  str?.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() || '';
+  str?.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
 
-function searchBooks(query, maxPrice = null) {
+// Fuzzy match core logic
+function smartSearch(query) {
+  if (!query || query.trim().length < 2) return [];
+
   const normalizedQuery = normalize(query);
-  const keywords = normalizedQuery.split(/\s+/);
+  const keyword = normalizedQuery.slice(0, 4); // Fuzzy: first 4 letters
 
-  const isISBN = /^\d{10,13}$/.test(query.trim());
-
-  const matches = allBooks.filter(book => {
-    // 🔍 Searchable fields
-    const fieldsToSearch = [
-      book.title,
-      book.vendor,
-      book.type,
-      ...(book.tags || []),
-      book.metafields?.author01,
-      book.metafields?.subcategory,
-      book.metafields?.language,
-      book.metafields?.keywords,
-      book.metafields?.isbn_13
-    ]
-      .filter(Boolean)
-      .map(normalize)
-      .join(' ');
-
-    // 🔍 Match if all words are partially found (fuzzy match)
-    const fuzzyMatch = keywords.every(word => fieldsToSearch.includes(word) || fieldsToSearch.startsWith(word));
-
-    // 🔍 If it's an ISBN search, match exactly
-    const isbnMatch = isISBN && (book.metafields?.isbn_13?.includes(query.trim()) || book.title.includes(query.trim()));
-
-    const withinPrice = maxPrice ? parseFloat(book.price) <= maxPrice : true;
-
-    return (fuzzyMatch || isbnMatch) && withinPrice;
-  });
-
-  // 📊 Sort low to high price
-  return matches.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+  return allBooks
+    .map(book => {
+      const score = computeScore(book, normalizedQuery, keyword);
+      return { ...book, _score: score };
+    })
+    .filter(b => b._score > 0)
+    .sort((a, b) => b._score - a._score)
+    .slice(0, 5); // Return top 5 matches
 }
 
-module.exports = { searchBooks };
+function computeScore(book, normalizedQuery, keyword) {
+  let score = 0;
+  const fields = [
+    book.title,
+    book.author,
+    book.vendor,
+    book.tags?.join(' '),
+    book.product_type,
+  ];
+
+  for (const field of fields) {
+    const text = normalize(field);
+    if (!text) continue;
+
+    if (text.includes(normalizedQuery)) score += 10;
+    else if (text.includes(keyword)) score += 5;
+    else if (text.split(' ').some(word => word.startsWith(keyword))) score += 2;
+  }
+
+  return score;
+}
+
+module.exports = { smartSearch };
