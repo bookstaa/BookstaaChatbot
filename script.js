@@ -1,13 +1,15 @@
+// 📤 Send on button click
 document.getElementById('send-button').addEventListener('click', sendMessage);
 
+// 📤 Send on Enter (without Shift)
 document.getElementById('user-input').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault(); // Prevent newline
+    e.preventDefault();
     sendMessage();
   }
 });
 
-// 🆕 Click prompt to send
+// 💡 Quick prompt buttons
 document.querySelectorAll('.suggested-prompt').forEach(btn => {
   btn.addEventListener('click', () => {
     document.getElementById('user-input').value = btn.innerText;
@@ -15,6 +17,7 @@ document.querySelectorAll('.suggested-prompt').forEach(btn => {
   });
 });
 
+// 🚀 Send message to /api/chat
 async function sendMessage() {
   const input = document.getElementById('user-input');
   const message = input.value.trim();
@@ -33,15 +36,16 @@ async function sendMessage() {
     });
 
     const data = await res.json();
-
     showTypingIndicator(false);
 
-    if (data.text) showAssistantMessage(data.text); // always show text if present
+    if (data.text) showAssistantMessage(data.text);
+
     if (data.type === 'products' && data.products?.length) {
       showProductSlider(data.products);
     } else if (!data.text) {
       showAssistantMessage("❓ I couldn’t find anything. Try searching by **title**, **author**, or **category**.");
     }
+
   } catch (err) {
     console.error('Chat error:', err);
     showTypingIndicator(false);
@@ -59,17 +63,17 @@ function showUserMessage(text) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 🤖 Show assistant message
+// 🤖 Show assistant reply
 function showAssistantMessage(text) {
   const chatBox = document.getElementById('chat-box');
   const msg = document.createElement('div');
   msg.className = 'chat assistant';
-  msg.innerHTML = marked.parse(text); // Markdown rendering
+  msg.innerHTML = marked.parse(text); // markdown support
   chatBox.appendChild(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 🕐 Typing indicator (3 dots animation)
+// 🕐 Typing dots indicator
 function showTypingIndicator(show) {
   const chatBox = document.getElementById('chat-box');
   const existing = document.getElementById('typing-indicator');
@@ -79,45 +83,4 @@ function showTypingIndicator(show) {
     const typing = document.createElement('div');
     typing.id = 'typing-indicator';
     typing.className = 'chat assistant';
-    typing.innerHTML = `<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>`;
-    chatBox.appendChild(typing);
-    chatBox.scrollTop = chatBox.scrollHeight;
-  }
-}
-
-// 🛍️ Show sliding product cards
-function showProductSlider(products) {
-  const chatBox = document.getElementById('chat-box');
-
-  // Remove old product sliders
-  const oldSliders = chatBox.querySelectorAll('.product-slider');
-  oldSliders.forEach(el => el.remove());
-
-  const wrapper = document.createElement('div');
-  wrapper.className = 'product-slider';
-
-  products.forEach(product => {
-    const card = document.createElement('div');
-    card.className = 'product-card';
-
-    card.innerHTML = `
-      <img class="product-img" src="${product.image}" alt="${product.title}" />
-      <div class="product-details">
-        <div class="product-title" title="${product.title}">${truncateText(product.title, 60)}</div>
-        <div class="product-author">${product.author || ''}</div>
-        <div class="product-price">${product.discount ? `<span class="discount">${product.discount}</span> ` : ''}${product.price}</div>
-        <a class="buy-now" href="${product.url}" target="_blank">View</a>
-      </div>
-    `;
-
-    wrapper.appendChild(card);
-  });
-
-  chatBox.appendChild(wrapper);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-// ✂️ Truncate long title
-function truncateText(text, maxLength) {
-  return text.length > maxLength ? text.slice(0, maxLength - 1) + '…' : text;
-}
+    typing.innerHTML = `<span class="typing-
