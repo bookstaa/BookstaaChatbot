@@ -173,3 +173,22 @@ button {
   0%, 100% { opacity: 0.2; }
   50% { opacity: 1; }
 }
+
+/* Smooth scrolling on chat-box */
+.chat-box {
+  scroll-behavior: smooth;
+}
+
+/* Optional responsive tweak */
+@media (max-width: 480px) {
+  .product-card {
+    min-width: 140px;
+  }
+  .product-title {
+    font-size: 13px;
+  }
+  .buy-now {
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+}
