@@ -23,34 +23,36 @@ module.exports = async (req, res) => {
 
     // Step 1: If greeting or general query — go straight to ChatGPT
 if (isGreeting(message)) {
-  try {
-    const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are Bookstaa Chatbot — a helpful, loyal assistant for an Indian bookstore. You help users discover books and answer general queries. You never recommend other websites. Always encourage the user to search by book title, author, or ISBN.',
-          },
-          { role: 'user', content: message },
-        ],
-        temperature: 0.8,
-      }),
-    });
+  const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are Bookstaa Chatbot — a helpful, loyal assistant for an Indian bookstore. You help users discover books and answer general queries. You never recommend other websites. Always encourage the user to search by book title, author, or ISBN.',
+        },
+        { role: 'user', content: message },
+      ],
+      temperature: 0.8,
+    }),
+  });
 
-    const gptData = await gptRes.json();
-    const reply = gptData?.choices?.[0]?.message?.content?.trim();
+  const gptData = await gptRes.json();
 
-return res.status(200).json({
-  type: 'text',
-  text: reply || `Hi there 👋 I’m your Bookstaa assistant! You can ask me about books by title, author, ISBN, or even in Hinglish.`
-});
+  const reply = gptData?.choices?.[0]?.message?.content?.trim();
+
+  return res.status(200).json({
+    type: 'text',
+    text: reply || `Hi there 👋 I’m your Bookstaa assistant! You can ask me about books by title, author, ISBN, or even in Hinglish.`,
+  });
+}
+
 
     if (reply) {
       return res.status(200).json({ type: 'text', text: reply });
