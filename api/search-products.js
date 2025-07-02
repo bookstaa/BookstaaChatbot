@@ -18,7 +18,7 @@ module.exports = async (req, res) => {
 
     const isISBN = /^\d{10}(\d{3})?$/.test(query.trim());
     const q = normalize(query);
-    const fuzzy = q.slice(0, 5);
+    const fuzzy = q.slice(0, 5); // first 5 characters
 
     const response = await fetch(`https://${SHOPIFY_DOMAIN}/api/2024-04/graphql.json`, {
       method: 'POST',
@@ -44,7 +44,7 @@ module.exports = async (req, res) => {
                       node { url }
                     }
                   }
-                  variants(first: 1) {
+                  variants(first: 5) {
                     edges {
                       node {
                         title
@@ -86,10 +86,8 @@ module.exports = async (req, res) => {
       const vendor = normalize(product.vendor);
       const productType = normalize(product.productType);
       const tags = product.tags.map(normalize);
-      const variant = product.variants.edges[0]?.node || {};
-      const variantTitle = normalize(variant.title);
-
       const metafields = {};
+
       for (const m of product.metafields || []) {
         if (m?.key && m?.value) {
           metafields[m.key] = normalize(m.value);
@@ -97,32 +95,58 @@ module.exports = async (req, res) => {
       }
 
       const author = metafields['author01'] || '';
-      const authorMatch = normalize(author).includes(q) || q.split(' ').every(word => author.includes(word));
-      const fuzzyMatch = title.startsWith(fuzzy) || author.startsWith(fuzzy);
+      const isbn = metafields['Book-ISBN'] || '';
+      const language = metafields['language'] || '';
+      const readersCategory = metafields['readers_category'] || '';
+      const authorLocation = metafields['author_location'] || '';
 
-      const match =
-        title.includes(q) ||
-        authorMatch ||
-        (isISBN && metafields['Book-ISBN']?.includes(q)) ||
-        metafields['language']?.includes(q) ||
-        metafields['readers_category']?.includes(q) ||
-        metafields['author_location']?.includes(q) ||
+      // 🔍 Smart matching logic — in order of priority
+      let match = false;
+
+      // 1. Title Match
+      if (title.includes(q)) match = true;
+
+      // 2. Author Match
+      else if (author.includes(q) || q.split(' ').every(word => author.includes(word))) match = true;
+
+      // 3. Metafield Match (readers_category, ISBN, language, author_location)
+      else if (
+        (isISBN && isbn.includes(q)) ||
+        readersCategory.includes(q) ||
+        language.includes(q) ||
+        authorLocation.includes(q)
+      ) {
+        match = true;
+      }
+
+      // 4. Tags, vendor, productType, description
+      else if (
         tags.some(tag => tag.includes(q)) ||
         vendor.includes(q) ||
-        description.includes(q) ||
         productType.includes(q) ||
-        fuzzyMatch;
+        description.includes(q)
+      ) {
+        match = true;
+      }
 
-      const isPaperback = variantTitle.includes('paperback');
+      // 5. Fuzzy match on title or author
+      else if (title.startsWith(fuzzy) || author.startsWith(fuzzy)) {
+        match = true;
+      }
 
-      if (match && isPaperback) {
+      // 📦 Get paperback variant only
+      const variant = product.variants.edges.find(v =>
+        normalize(v.node.title).includes('paperback')
+      )?.node;
+
+      if (match && variant) {
         const price = parseFloat(variant.price?.amount || '0');
         const compare = parseFloat(variant.compareAtPrice?.amount || '0');
         const discount = compare > price ? Math.round(((compare - price) / compare) * 100) : 0;
 
         results.push({
           title: product.title,
-          author: metafields['author01'] || '',
+          author: author || '',
           price: `₹${price}`,
           image: product.images.edges[0]?.node.url || '',
           url: `https://www.bookstaa.com/products/${product.handle}`,
@@ -131,6 +155,7 @@ module.exports = async (req, res) => {
       }
     }
 
+    // 🛑 No results found — show helpful fallback
     if (results.length === 0) {
       return res.status(200).json({
         products: [],
@@ -138,6 +163,7 @@ module.exports = async (req, res) => {
       });
     }
 
+    // ✅ Results found
     res.status(200).json({ products: results });
 
   } catch (err) {
