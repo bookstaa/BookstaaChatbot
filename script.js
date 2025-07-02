@@ -1,4 +1,4 @@
-// 📦 Section 1: Setup listeners for Enter key and prompt buttons
+// 📜 Section 0: Keyboard & Suggested Prompts
 document.getElementById('user-input').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
@@ -13,7 +13,7 @@ document.querySelectorAll('.suggested-prompt').forEach(btn => {
   });
 });
 
-// 📦 Section 2: Main sendMessage function
+// 🚀 Section 1: Main Chat Handler
 async function sendMessage() {
   const input = document.getElementById('user-input');
   const message = input.value.trim();
@@ -21,6 +21,7 @@ async function sendMessage() {
 
   showUserMessage(message);
   input.value = '';
+
   showTypingIndicator(true);
 
   try {
@@ -33,13 +34,19 @@ async function sendMessage() {
     const data = await res.json();
     showTypingIndicator(false);
 
-    // 📦 Section 3: Handle assistant response types
+    // 🤖 Section 2: If GPT text + products
     if (data.type === 'products' && data.products?.length) {
-      if (data.text) showAssistantMessage(data.text); // Intro from GPT
-      showProductSlider(data.products);               // Product cards
-    } else if (data.type === 'text' && data.text) {
-      showAssistantMessage(data.text);                // Greeting or fallback
-    } else {
+      if (data.text) showAssistantMessage(data.text);
+      showProductSlider(data.products);
+    }
+
+    // 🧠 Section 3: GPT text-only replies (greetings, fallback, etc.)
+    else if (data.type === 'text' && data.text) {
+      showAssistantMessage(data.text);
+    }
+
+    // ❓ Section 4: Total fallback — nothing returned
+    else {
       showAssistantMessage(`
 ❓ I couldn’t find anything related to your query.
 
@@ -52,13 +59,13 @@ Try:
     }
 
   } catch (err) {
-    console.error('💥 Chat error:', err);
+    console.error('Chat error:', err);
     showTypingIndicator(false);
     showAssistantMessage('⚠️ Something went wrong. Please try again.');
   }
 }
 
-// 📦 Section 4: Render user message
+// 💬 Section 5: Show User Message
 function showUserMessage(text) {
   const chatBox = document.getElementById('chat-box');
   const msg = document.createElement('div');
@@ -68,17 +75,17 @@ function showUserMessage(text) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 📦 Section 5: Render assistant message with markdown
+// 🤖 Section 6: Show Assistant Message (with Markdown)
 function showAssistantMessage(text) {
   const chatBox = document.getElementById('chat-box');
   const msg = document.createElement('div');
   msg.className = 'chat assistant';
-  msg.innerHTML = marked.parse(text); // Requires marked.js
+  msg.innerHTML = marked.parse(text); // Markdown support
   chatBox.appendChild(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 📦 Section 6: Typing indicator (animated dots)
+// 🕐 Section 7: Typing Dots
 function showTypingIndicator(show) {
   const chatBox = document.getElementById('chat-box');
   const existing = document.getElementById('typing-indicator');
@@ -94,11 +101,11 @@ function showTypingIndicator(show) {
   }
 }
 
-// 📦 Section 7: Show product cards (horizontal slider layout)
+// 🛍️ Section 8: Product Card Renderer
 function showProductSlider(products) {
   const chatBox = document.getElementById('chat-box');
 
-  // Remove old product sliders
+  // Clear previous product sliders if any
   chatBox.querySelectorAll('.product-slider').forEach(el => el.remove());
 
   const wrapper = document.createElement('div');
@@ -130,10 +137,10 @@ function showProductSlider(products) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 📦 Section 8: Truncate long text safely
+// ✂️ Section 9: Text Truncator for Titles
 function truncateText(text, maxLength) {
   return text.length > maxLength ? text.slice(0, maxLength - 1) + '…' : text;
 }
 
-// 📦 Section 9: Make globally callable
+// 🌐 Section 10: Expose to Global Scope
 window.sendMessage = sendMessage;
