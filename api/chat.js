@@ -60,12 +60,26 @@ Now craft a helpful reply using a conversational tone.
 
     const gptData = await gptRes.json();
     console.log('🧠 GPT fallback response:', JSON.stringify(gptData, null, 2));
-const reply = gptData.choices?.[0]?.message?.content?.trim();
+let reply;
 
-    if (!reply) {
-      return res.status(200).json({
-        type: 'text',
-        text: `❓ I couldn’t find anything for: **${message}**
+try {
+  reply = gptData.choices?.[0]?.message?.content?.trim();
+} catch (e) {
+  console.error('🛑 GPT reply extraction failed:', e);
+}
+
+if (!reply) {
+  reply = `❓ I couldn’t find anything for: **${message}**
+
+You can try:
+• Searching by **book title**, **author name**, or **ISBN**
+• Asking for **categories** like *astrology*, *Vedic studies*, or *bestsellers*
+
+We're adding new books regularly at [Bookstaa.com](https://bookstaa.com) 📚`;
+}
+
+// ✅ Finally send it
+return res.status(200).json({ type: 'text', text: reply });
 
 You can try:
 • Searching by **book title**, **author name**, or **ISBN**
