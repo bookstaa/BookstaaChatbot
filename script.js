@@ -1,7 +1,4 @@
-// 📤 Send on button click
-document.getElementById('send-button').addEventListener('click', sendMessage);
-
-// 📤 Send on Enter (without Shift)
+// 📤 Send on Enter key (without Shift)
 document.getElementById('user-input').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
@@ -9,7 +6,7 @@ document.getElementById('user-input').addEventListener('keydown', e => {
   }
 });
 
-// 💡 Quick prompt buttons
+// 💡 Suggested prompt buttons
 document.querySelectorAll('.suggested-prompt').forEach(btn => {
   btn.addEventListener('click', () => {
     document.getElementById('user-input').value = btn.innerText;
@@ -17,7 +14,7 @@ document.querySelectorAll('.suggested-prompt').forEach(btn => {
   });
 });
 
-// 🚀 Send message to /api/chat
+// 🚀 Main function to handle user input
 async function sendMessage() {
   const input = document.getElementById('user-input');
   const message = input.value.trim();
@@ -53,7 +50,7 @@ async function sendMessage() {
   }
 }
 
-// 💬 Show user's message
+// 💬 Show user message
 function showUserMessage(text) {
   const chatBox = document.getElementById('chat-box');
   const msg = document.createElement('div');
@@ -63,17 +60,17 @@ function showUserMessage(text) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 🤖 Show assistant reply
+// 🤖 Show assistant message
 function showAssistantMessage(text) {
   const chatBox = document.getElementById('chat-box');
   const msg = document.createElement('div');
   msg.className = 'chat assistant';
-  msg.innerHTML = marked.parse(text); // markdown support
+  msg.innerHTML = marked.parse(text); // Markdown support
   chatBox.appendChild(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 🕐 Typing dots indicator
+// 🕐 Typing dots
 function showTypingIndicator(show) {
   const chatBox = document.getElementById('chat-box');
   const existing = document.getElementById('typing-indicator');
@@ -83,4 +80,50 @@ function showTypingIndicator(show) {
     const typing = document.createElement('div');
     typing.id = 'typing-indicator';
     typing.className = 'chat assistant';
-    typing.innerHTML = `<span class="typing-
+    typing.innerHTML = `<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>`;
+    chatBox.appendChild(typing);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+}
+
+// 🛍️ Show horizontal product card slider
+function showProductSlider(products) {
+  const chatBox = document.getElementById('chat-box');
+
+  // Remove existing product sliders if any
+  chatBox.querySelectorAll('.product-slider').forEach(el => el.remove());
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'product-slider';
+
+  products.forEach(product => {
+    const card = document.createElement('div');
+    card.className = 'product-card';
+
+    card.innerHTML = `
+      <img class="product-img" src="${product.image}" alt="${product.title}" />
+      <div class="product-details">
+        <div class="product-title" title="${product.title}">${truncateText(product.title, 60)}</div>
+        <div class="product-author">${product.author || ''}</div>
+        <div class="product-price">
+          ${product.discount ? `<span class="discount">${product.discount}</span> ` : ''}
+          ${product.price}
+        </div>
+        <a class="buy-now" href="${product.url}" target="_blank">View</a>
+      </div>
+    `;
+
+    wrapper.appendChild(card);
+  });
+
+  chatBox.appendChild(wrapper);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// ✂️ Truncate long title text
+function truncateText(text, maxLength) {
+  return text.length > maxLength ? text.slice(0, maxLength - 1) + '…' : text;
+}
+
+// 🌍 Expose sendMessage globally for inline onclick in HTML
+window.sendMessage = sendMessage;
