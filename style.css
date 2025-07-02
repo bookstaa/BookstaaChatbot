@@ -131,3 +131,45 @@ button {
   background: #237230;
 }
 /* --- END: Product Card --- */
+
+/* Suggested Prompt Buttons */
+.suggested-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  background: #f7f9fc;
+  border-top: 1px solid #ddd;
+  border-bottom: 1px solid #ddd;
+}
+.suggested-prompts button {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.suggested-prompts button:hover {
+  background: #eef6ff;
+  border-color: #0070f3;
+}
+
+/* Typing Dots */
+.typing-dots span {
+  animation: blink 1.2s infinite;
+  font-size: 24px;
+  color: #888;
+  margin-right: 2px;
+}
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes blink {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
