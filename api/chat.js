@@ -60,11 +60,37 @@ module.exports = async (req, res) => {
 
     // Step 3: If products found on first try — return products immediately
     if (initialSearchData.products && initialSearchData.products.length > 0) {
-      return res.status(200).json({
-        type: 'products',
-        products: initialSearchData.products,
-      });
-    }
+  // Also generate a soft reply to go with the product match
+  const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are Bookstaa Chatbot — a helpful, loyal assistant for an Indian bookstore. Respond in a friendly, engaging tone. Suggest books, categories, or reply helpfully based on context. Keep it short.',
+        },
+        { role: 'user', content: message },
+      ],
+      temperature: 0.7,
+    }),
+  });
+
+  const gptData = await gptRes.json();
+  const gptReply = gptData.choices?.[0]?.message?.content?.trim() || '';
+
+  return res.status(200).json({
+    type: 'products',
+    text: gptReply, // ✅ Show both GPT reply and product cards
+    products: initialSearchData.products,
+  });
+}
+
 
     // Step 4: Ask GPT for fallback natural language reply
     const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
