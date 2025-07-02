@@ -35,12 +35,25 @@ async function sendMessage() {
     const data = await res.json();
     showTypingIndicator(false);
 
+    // 🤖 Show assistant reply if available
     if (data.text) showAssistantMessage(data.text);
 
+    // 📚 Show products if available
     if (data.type === 'products' && data.products?.length) {
       showProductSlider(data.products);
-    } else if (!data.text) {
-      showAssistantMessage("❓ I couldn’t find anything. Try searching by **title**, **author**, or **category**.");
+    } 
+    
+    // ❓ Fallback when no products or reply found
+    else if (!data.text || (data.type === 'products' && !data.products?.length)) {
+      showAssistantMessage(`
+❓ I couldn’t find anything related to your query.
+
+Try:
+• Searching by **book title**, **author name**, or **ISBN**
+• Asking for categories like *astrology*, *yoga*, or *bestsellers*
+
+📩 You can also email us at [feedback@bookstaa.com](mailto:feedback@bookstaa.com) to suggest or request a book!
+      `);
     }
 
   } catch (err) {
@@ -90,7 +103,7 @@ function showTypingIndicator(show) {
 function showProductSlider(products) {
   const chatBox = document.getElementById('chat-box');
 
-  // Remove existing product sliders if any
+  // Remove previous sliders
   chatBox.querySelectorAll('.product-slider').forEach(el => el.remove());
 
   const wrapper = document.createElement('div');
@@ -103,13 +116,15 @@ function showProductSlider(products) {
     card.innerHTML = `
       <img class="product-img" src="${product.image}" alt="${product.title}" />
       <div class="product-details">
-        <div class="product-title" title="${product.title}">${truncateText(product.title, 60)}</div>
+        <div class="product-title" title="${product.title}">
+          ${truncateText(product.title, 60)}
+        </div>
         <div class="product-author">${product.author || ''}</div>
         <div class="product-price">
           ${product.discount ? `<span class="discount">${product.discount}</span> ` : ''}
           ${product.price}
         </div>
-        <a class="buy-now" href="${product.url}" target="_blank">View</a>
+        <a class="buy-now" href="${product.url}" target="_blank">Buy Now</a>
       </div>
     `;
 
@@ -120,10 +135,10 @@ function showProductSlider(products) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// ✂️ Truncate long title text
+// ✂️ Truncate long text
 function truncateText(text, maxLength) {
   return text.length > maxLength ? text.slice(0, maxLength - 1) + '…' : text;
 }
 
-// 🌍 Expose sendMessage globally for inline onclick in HTML
+// 🌍 Expose globally
 window.sendMessage = sendMessage;
