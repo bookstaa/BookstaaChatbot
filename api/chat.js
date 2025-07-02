@@ -49,7 +49,11 @@ Now craft a helpful reply using a conversational tone.
       },
       body: JSON.stringify({
         model: 'gpt-4o',
-        messages: [{ role: 'system', content: prompt }],
+        messages: [
+  { role: 'system', content: 'You are Bookstaa Chatbot — a helpful, loyal assistant for an Indian bookstore. You help users discover books based on their queries and intent.' },
+  { role: 'user', content: message }
+],
+
         temperature: 0.8,
       }),
     });
