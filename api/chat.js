@@ -1,43 +1,52 @@
 // /api/chat.js
 
-const { smartSearch } = require('../utils/smartSearch');
+const fetch = require('node-fetch');
 
 module.exports = async (req, res) => {
   try {
     const { message } = req.body;
-
     if (!message || message.trim().length < 1) {
       return res.status(400).json({ error: 'Empty message' });
     }
 
-    // 🔍 Try smart product search
-    const productMatches = smartSearch(message);
+    console.log('📩 Query:', message);
 
-    if (productMatches.length > 0) {
-      const productCards = productMatches.map(product => ({
-        title: product.title,
-        author: product.author || '',
-        price: product.price || '—',
-        image: product.image || '',
-        url: product.url || '',
-        vendor: product.vendor || '',
-      }));
+    // 🔍 1. Call your existing Shopify product search endpoint
+    const shopifyRes = await fetch(`${process.env.BASE_URL || 'https://bookstaa-chatbot.vercel.app'}/api/search-products`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: message }),
+    });
 
-      return res.status(200).json({ type: 'product', products: productCards });
+    const searchResult = await shopifyRes.json();
+
+    if (searchResult.products?.length > 0) {
+      return res.status(200).json({
+        type: 'product',
+        products: searchResult.products,
+      });
     }
 
-    // 🤖 Fallback response (no GPT for now)
+    // 🤖 2. Fallback if no products found
     const reply = await getAssistantReply(message);
     return res.status(200).json({ type: 'text', reply });
 
   } catch (err) {
-    console.error('Chatbot error:', err);
+    console.error('❌ Chat error:', err);
     return res.status(500).json({ error: 'Chatbot failure' });
   }
 };
 
-// 🧠 TEMP fallback (GPT-free)
-async function getAssistantReply(userInput) {
-  console.log('Assistant fallback triggered for:', userInput);
-  return `Hi there! You asked about: "${userInput}". Please try using a **book title**, **author name**, or **category** available on Bookstaa.com. 📚`;
+// 🤖 Assistant fallback when no products match
+async function getAssistantReply(message) {
+  console.log('💬 Assistant fallback triggered for:', message);
+
+  // Customize tone & suggestions
+  return `❓ I couldn’t find anything for: **${message}**
+
+You can try:
+• Searching by **book title**, **author name**, or **ISBN**
+• Asking for **categories** like *astrology*, *Vedic studies*, or *bestsellers*
+
+We're adding new books regularly at [Bookstaa.com](https://bookstaa.com) 📚`;
 }
