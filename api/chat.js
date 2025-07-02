@@ -1,5 +1,5 @@
 // /api/chat.js
-const { smartSearch } = require('../lib/smartSearch');
+const { smartSearch } = require('../utils/smartSearch');
 const fetch = require('node-fetch');
 
 module.exports = async (req, res) => {
