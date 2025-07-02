@@ -9,23 +9,25 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Empty message' });
     }
 
-    // Step 1: Try to fetch products using search API
     const baseURL = req.headers.origin || 'https://bookstaa.com';
 
-    const searchRes = await fetch(`${baseURL}/api/search-products`, {
+    // Step 1: Primary product search using original message
+    const initialSearchRes = await fetch(`${baseURL}/api/search-products`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query: message }),
     });
+    const initialSearchData = await initialSearchRes.json();
 
-    const searchData = await searchRes.json();
-
-    // Step 2: If products found → return product results
-    if (searchData.products && searchData.products.length > 0) {
-      return res.status(200).json({ type: 'products', products: searchData.products });
+    // Step 2: If products found on first try — return products immediately
+    if (initialSearchData.products && initialSearchData.products.length > 0) {
+      return res.status(200).json({
+        type: 'products',
+        products: initialSearchData.products,
+      });
     }
 
-    // Step 3: Fallback — Use ChatGPT to analyze intent
+    // Step 3: Ask GPT for a natural language reply
     const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -47,9 +49,8 @@ module.exports = async (req, res) => {
     });
 
     const gptData = await gptRes.json();
-    console.log('🧠 GPT fallback response:', JSON.stringify(gptData, null, 2));
-
     let reply = '';
+
     try {
       reply = gptData.choices?.[0]?.message?.content?.trim();
     } catch (e) {
@@ -64,10 +65,9 @@ You can try:
 • Asking for **categories** like *astrology*, *Vedic studies*, or *bestsellers*
 
 We're adding new books regularly at [Bookstaa.com](https://bookstaa.com) 📚`;
-      return res.status(200).json({ type: 'text', text: reply });
     }
 
-    // ✅ Step 4: Ask ChatGPT to extract clean keywords from user message
+    // Step 4: Ask GPT to extract keyword(s)
     const keywordRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -94,7 +94,7 @@ We're adding new books regularly at [Bookstaa.com](https://bookstaa.com) 📚`;
 
     console.log('🔎 Extracted keyword(s):', keywordStr);
 
-    // ✅ Step 5: Try another product search using extracted keywords
+    // Step 5: Secondary product search using cleaned keyword
     if (cleanedQuery && cleanedQuery.length > 2) {
       const secondSearchRes = await fetch(`${baseURL}/api/search-products`, {
         method: 'POST',
@@ -107,13 +107,13 @@ We're adding new books regularly at [Bookstaa.com](https://bookstaa.com) 📚`;
       if (secondSearchData.products && secondSearchData.products.length > 0) {
         return res.status(200).json({
           type: 'products',
-          products: secondSearchData.products,
           text: reply,
+          products: secondSearchData.products,
         });
       }
     }
 
-    // Final fallback — return GPT reply only
+    // Step 6: Fallback to GPT reply only
     return res.status(200).json({ type: 'text', text: reply });
 
   } catch (err) {
