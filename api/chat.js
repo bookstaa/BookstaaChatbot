@@ -21,32 +21,44 @@ module.exports = async (req, res) => {
 
     const baseURL = req.headers.origin || 'https://bookstaa.com';
 
-    // 1️⃣ GREETING → respond instantly with GPT
-    if (isGreeting(message)) {
-      const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are Bookstaa Chatbot — a friendly, Hinglish-savvy assistant for an Indian bookstore. Answer greetings warmly, and encourage the user to search books by title, author, or ISBN. Never suggest outside stores.'
-            },
-            { role: 'user', content: message }
-          ],
-          temperature: 0.7
-        })
-      });
+    // ✅ Section: Greeting or general query — ONLY ChatGPT handles it
+if (isGreeting(message)) {
+  try {
+    const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are Bookstaa Chatbot — a friendly, loyal bookstore assistant. Greet users warmly. Answer basic questions like "hello", "who are you", or "how can you help" in a cheerful tone. You never suggest other websites.',
+          },
+          { role: 'user', content: message },
+        ],
+        temperature: 0.7,
+      }),
+    });
 
-      const gptData = await gptRes.json();
-      const reply = gptData.choices?.[0]?.message?.content?.trim() || 'Hi there 👋 How can I help you find a great book today?';
+    const gptData = await gptRes.json();
+    const reply =
+      gptData.choices?.[0]?.message?.content?.trim() ||
+      `Hi there 👋 I'm your Bookstaa assistant. Ask me about books, authors, or anything else!`;
 
-      return res.status(200).json({ type: 'text', text: reply });
-    }
+    return res.status(200).json({ type: 'text', text: reply });
+  } catch (err) {
+    console.error('🛑 GPT greeting reply error:', err);
+    return res.status(200).json({
+      type: 'text',
+      text: `Hi there 👋 I'm your Bookstaa assistant. Ask me about books, authors, or anything else!`,
+    });
+  }
+}
+
 
     // 2️⃣ PRIMARY SEARCH
     const searchRes = await fetch(`${baseURL}/api/search-products`, {
