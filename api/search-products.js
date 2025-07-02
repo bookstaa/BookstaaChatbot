@@ -102,18 +102,28 @@ module.exports = async (req, res) => {
         }
       }
 
-      const matches =
-        title.includes(q) ||
-        title.startsWith(q.slice(0, 5)) ||
-        (isISBN && metafields['Book-ISBN']?.includes(q)) ||
-        metafields['author01']?.includes(q) ||
-        metafields['language']?.includes(q) ||
-        metafields['readers_category']?.includes(q) ||
-        metafields['author_location']?.includes(q) ||
-        tags.some(tag => tag.includes(q)) ||
-        vendor.includes(q) ||
-        description.includes(q) ||
-        productType.includes(q);
+      // Author match logic (full name + loose fallback)
+const author = metafields['author01'] || '';
+const authorWords = author.split(' ');
+const qWords = q.split(' ');
+
+const exactAuthorMatch = normalize(author) === q;
+const partialAuthorMatch = qWords.every(qw => author.includes(qw)) && qWords.length > 1;
+
+const matches =
+  title.includes(q) ||
+  title.startsWith(q.slice(0, 5)) ||
+  (isISBN && metafields['Book-ISBN']?.includes(q)) ||
+  exactAuthorMatch ||
+  partialAuthorMatch ||
+  metafields['language']?.includes(q) ||
+  metafields['readers_category']?.includes(q) ||
+  metafields['author_location']?.includes(q) ||
+  tags.some(tag => tag.includes(q)) ||
+  vendor.includes(q) ||
+  description.includes(q) ||
+  productType.includes(q);
+
 
       const isPaperback = variantTitle.includes('paperback');
 
