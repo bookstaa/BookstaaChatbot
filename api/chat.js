@@ -53,16 +53,6 @@ if (isGreeting(message)) {
   });
 }
 
-
-    if (reply) {
-      return res.status(200).json({ type: 'text', text: reply });
-    } else {
-      console.error('⚠️ No reply from GPT:', gptData);
-      return res.status(200).json({
-        type: 'text',
-        text: `Hi there 👋 I’m your Bookstaa assistant! You can ask me about books by title, author, ISBN, or even ask in Hinglish.`,
-      });
-    }
   } catch (e) {
     console.error('💥 GPT greeting fail:', e);
     return res.status(200).json({
