@@ -10,13 +10,13 @@ module.exports = async (req, res) => {
     }
 
     // Step 1: Try to fetch products using search API
-const baseURL = req.headers.origin || 'https://bookstaa.com';
+    const baseURL = req.headers.origin || 'https://bookstaa.com';
 
-const searchRes = await fetch(`${baseURL}/api/search-products`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ query: message }),
-});
+    const searchRes = await fetch(`${baseURL}/api/search-products`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: message }),
+    });
 
     const searchData = await searchRes.json();
 
@@ -26,21 +26,6 @@ const searchRes = await fetch(`${baseURL}/api/search-products`, {
     }
 
     // Step 3: Fallback — Use ChatGPT to analyze intent
-    const prompt = `
-You are Bookstaa Chatbot — a helpful, friendly assistant for an Indian bookstore.
-
-Respond to the user message below. You do NOT have product search results, so your job is to:
-
-1. Understand what the user may be looking for (intent)
-2. Suggest helpful categories or search tips
-3. Encourage the user to type more specific words (like book title, author, or subject)
-4. Sound smart, natural, and loyal to Bookstaa (NEVER recommend other websites)
-
-Message from user: "${message}"
-
-Now craft a helpful reply using a conversational tone.
-`;
-
     const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -50,47 +35,41 @@ Now craft a helpful reply using a conversational tone.
       body: JSON.stringify({
         model: 'gpt-4o',
         messages: [
-  { role: 'system', content: 'You are Bookstaa Chatbot — a helpful, loyal assistant for an Indian bookstore. You help users discover books based on their queries and intent.' },
-  { role: 'user', content: message }
-],
-
+          {
+            role: 'system',
+            content:
+              'You are Bookstaa Chatbot — a helpful, loyal assistant for an Indian bookstore. You help users discover books based on their queries and intent. You never recommend other websites. Always encourage the user to search by book title, author, or ISBN.',
+          },
+          { role: 'user', content: message },
+        ],
         temperature: 0.8,
       }),
     });
 
     const gptData = await gptRes.json();
     console.log('🧠 GPT fallback response:', JSON.stringify(gptData, null, 2));
-let reply;
 
-try {
-  reply = gptData.choices?.[0]?.message?.content?.trim();
-} catch (e) {
-  console.error('🛑 GPT reply extraction failed:', e);
-}
+    let reply;
 
-if (!reply) {
-  reply = `❓ I couldn’t find anything for: **${message}**
+    try {
+      reply = gptData.choices?.[0]?.message?.content?.trim();
+    } catch (e) {
+      console.error('🛑 GPT reply extraction failed:', e);
+    }
+
+    if (!reply) {
+      reply = `❓ I couldn’t find anything for: **${message}**
 
 You can try:
 • Searching by **book title**, **author name**, or **ISBN**
 • Asking for **categories** like *astrology*, *Vedic studies*, or *bestsellers*
 
 We're adding new books regularly at [Bookstaa.com](https://bookstaa.com) 📚`;
-}
-
-// ✅ Finally send it
-return res.status(200).json({ type: 'text', text: reply });
-
-You can try:
-• Searching by **book title**, **author name**, or **ISBN**
-• Asking for **categories** like *astrology*, *Vedic studies*, or *bestsellers*
-
-We're adding new books regularly at [Bookstaa.com](https://bookstaa.com) 📚`,
-      });
     }
 
-    // Step 4: Return ChatGPT fallback reply
+    // ✅ Return ChatGPT reply or fallback
     return res.status(200).json({ type: 'text', text: reply });
+
   } catch (err) {
     console.error('💥 /api/chat error:', err);
     return res.status(500).json({ error: 'Chat failed', details: err.message });
