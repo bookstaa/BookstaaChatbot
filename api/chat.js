@@ -10,11 +10,13 @@ module.exports = async (req, res) => {
     }
 
     // Step 1: Try to fetch products using search API
-    const searchRes = await fetch(`${process.env.VERCEL_URL || 'http://localhost:3000'}/api/search-products`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: message }),
-    });
+const baseURL = req.headers.origin || 'https://bookstaa.com';
+
+const searchRes = await fetch(`${baseURL}/api/search-products`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ query: message }),
+});
 
     const searchData = await searchRes.json();
 
