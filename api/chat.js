@@ -1,6 +1,8 @@
+// 📦 Section 0: Imports & Setup
 const fetch = require('node-fetch');
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
+// 📦 Section 1: Greeting Keywords Logic
 const isGreeting = (input) => {
   const greetings = [
     'hello', 'hi', 'namaste', 'how are you', 'how can you help',
@@ -13,48 +15,44 @@ const isGreeting = (input) => {
 
 module.exports = async (req, res) => {
   try {
+    // 📦 Section 2: Basic Validations & Setup
     const { message } = req.body;
     if (!message || message.length < 1) {
       return res.status(400).json({ error: 'Empty message' });
     }
 
     const baseURL = req.headers.origin || 'https://bookstaa.com';
-    const normMsg = message.toLowerCase();
+    const normMsg = message.toLowerCase().trim();
 
-// ✅ 1. Handle greetings
-if (isGreeting(message)) {
-  const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You are Bookstaa Chatbot — a helpful, loyal assistant for an Indian bookstore. You help users discover books and answer general queries. You never recommend other websites. Always encourage the user to search by book title, author, or ISBN.',
+    // 📦 Section 3: Handle Greeting Messages
+    if (isGreeting(normMsg)) {
+      const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
         },
-        { role: 'user', content: message },
-      ],
-      temperature: 0.7,
-    }),
-  });
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are Bookstaa Chatbot — a helpful, loyal assistant for an Indian bookstore. You help users discover books and answer general queries. You never recommend other websites. Always encourage the user to search by book title, author, or ISBN.',
+            },
+            { role: 'user', content: message },
+          ],
+          temperature: 0.7,
+        }),
+      });
 
-  const gptData = await gptRes.json();
-  const reply = gptData?.choices?.[0]?.message?.content?.trim();
+      const gptData = await gptRes.json();
+      const reply = gptData?.choices?.[0]?.message?.content?.trim() || `Hi there 👋 I’m your Bookstaa assistant! You can ask me about books by title, author, ISBN, or even in Hinglish.`;
 
-  return res.status(200).json({
-    type: 'text',
-    text: reply && reply.length > 1
-      ? reply
-      : `👋 Hi there! I’m your Bookstaa assistant. Ask me about books by title, author, or ISBN.`,
-  });
-}
+      return res.status(200).json({ type: 'text', text: reply });
+    }
 
-    // ✅ 2. Primary product search
+    // 📦 Section 4: Search Products Using Shopify
     const searchRes = await fetch(`${baseURL}/api/search-products`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -64,7 +62,7 @@ if (isGreeting(message)) {
     const searchData = await searchRes.json();
 
     if (searchData.products?.length > 0) {
-      // Optional GPT reply for intro message with products
+      // 📦 Section 5: GPT Intro (with Products Found)
       const gptReplyRes = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -94,7 +92,7 @@ if (isGreeting(message)) {
       });
     }
 
-    // ✅ 3. No match — fallback response + keyword retry
+    // 📦 Section 6: GPT Fallback Response (no products found)
     const fallbackRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -117,7 +115,7 @@ if (isGreeting(message)) {
     const fallbackData = await fallbackRes.json();
     let fallbackReply = fallbackData?.choices?.[0]?.message?.content?.trim() || '';
 
-    // ✅ 4. Extract keywords for secondary product retry
+    // 📦 Section 7: GPT Keyword Extraction for Retry
     const keywordRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -158,7 +156,7 @@ if (isGreeting(message)) {
       }
     }
 
-    // ✅ 5. Final fallback
+    // 📦 Section 8: Final fallback if nothing matches
     if (!fallbackReply) {
       fallbackReply = `❓ I couldn’t find anything for **${message}**.
 
@@ -167,12 +165,13 @@ Try searching by:
 • **Author name** (e.g. "Devdutt Pattanaik")
 • **ISBN** or category like *astrology*
 
-Still need help? Email [feedback@bookstaa.com](mailto:feedback@bookstaa.com) ✉️`;
+📩 Still need help? Email [feedback@bookstaa.com](mailto:feedback@bookstaa.com) ✉️`;
     }
 
     return res.status(200).json({ type: 'text', text: fallbackReply });
 
   } catch (err) {
+    // 📦 Section 9: Catch Unexpected Errors
     console.error('💥 /api/chat error:', err);
     return res.status(500).json({ error: 'Chat failed', details: err.message });
   }
