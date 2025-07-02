@@ -1,3 +1,6 @@
+// 📁 /api/search-products.js
+// ✅ Updated: 2025-07-02 – Smart Search (BIBLE Priority) with proper product structure
+
 const fetch = require('node-fetch');
 
 const SHOPIFY_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
@@ -5,13 +8,14 @@ const SHOPIFY_STOREFRONT_API_TOKEN = process.env.SHOPIFY_STOREFRONT_API_TOKEN;
 
 const gql = String.raw;
 
-// 🔤 Normalize for matching
+// 🔤 Section 1: Normalize input
 function normalize(str) {
   return str?.toLowerCase().replace(/[^a-z0-9\s]/gi, '').trim();
 }
 
 module.exports = async (req, res) => {
   try {
+    // 🚀 Section 2: Parse and validate user query
     const { query } = req.body;
     if (!query || query.length < 2) {
       return res.status(400).json({ error: 'Missing query' });
@@ -19,9 +23,9 @@ module.exports = async (req, res) => {
 
     const isISBN = /^\d{10}(\d{3})?$/.test(query.trim());
     const q = normalize(query);
-    const fuzzy = q.slice(0, 5); // first 5 characters
+    const fuzzy = q.slice(0, 5); // first 5 chars for fuzzy fallback
 
-    // 📡 Fetch products with required metafields
+    // 🧠 Section 3: Query Shopify Storefront API
     const response = await fetch(`https://${SHOPIFY_DOMAIN}/api/2024-04/graphql.json`, {
       method: 'POST',
       headers: {
@@ -73,12 +77,13 @@ module.exports = async (req, res) => {
 
     const result = await response.json();
     if (!result?.data?.products) {
-      console.error('⚠️ Shopify API did not return products:', result);
+      console.error('⚠️ Shopify API returned no products:', result);
       return res.status(500).json({ error: 'Shopify API error', details: result });
     }
 
+    // 🧪 Section 4: Match logic per product (BIBLE rules)
     const products = result.data.products.edges.map(edge => edge.node);
-    const results = [];
+    const matched = [];
 
     for (const product of products) {
       const title = normalize(product.title);
@@ -100,54 +105,45 @@ module.exports = async (req, res) => {
       const readersCategory = metafields['readers_category'] || '';
       const authorLocation = metafields['author_location'] || '';
 
-      // 🔍 Smart Search Logic: Follow BIBLE priority
       let match = false;
 
       if (title.includes(q)) {
-        match = true; // 1. Title Match
+        match = true; // Title
       } else if (author.includes(q) || q.split(' ').every(word => author.includes(word))) {
-        match = true; // 2. Author Match
-      } else if (
-        (isISBN && isbn.includes(q)) ||           // ISBN exact match
-        readersCategory.includes(q) ||
-        language.includes(q) ||
-        authorLocation.includes(q)
-      ) {
-        match = true; // 3. Metafield Match
-      } else if (
-        tags.some(tag => tag.includes(q)) ||
-        vendor.includes(q) ||
-        productType.includes(q) ||
-        description.includes(q)
-      ) {
-        match = true; // 4. Tags, Vendor, Type, Description
+        match = true; // Author
+      } else if ((isISBN && isbn.includes(q)) || readersCategory.includes(q) || language.includes(q) || authorLocation.includes(q)) {
+        match = true; // Metafields
+      } else if (tags.some(tag => tag.includes(q)) || vendor.includes(q) || productType.includes(q) || description.includes(q)) {
+        match = true; // Secondary fields
       } else if (title.startsWith(fuzzy) || author.startsWith(fuzzy)) {
-        match = true; // 5. Fuzzy Match
+        match = true; // Fuzzy match
       }
 
-      // 📦 Pick Paperback variant only
-      const variant = product.variants.edges.find(v =>
-        normalize(v.node.title).includes('paperback')
-      )?.node;
+      // 🎯 Section 5: Final data push
+      if (match) {
+        const variant = product.variants.edges.find(v =>
+          normalize(v.node.title).includes('paperback')
+        )?.node;
 
-      if (match && variant) {
-        const price = parseFloat(variant.price?.amount || '0');
-        const compare = parseFloat(variant.compareAtPrice?.amount || '0');
-        const discount = compare > price ? Math.round(((compare - price) / compare) * 100) : 0;
+        if (variant) {
+          const price = parseFloat(variant.price?.amount || '0');
+          const compare = parseFloat(variant.compareAtPrice?.amount || '0');
+          const discount = compare > price ? Math.round(((compare - price) / compare) * 100) : 0;
 
-        results.push({
-          title: product.title,
-          author: author || '',
-          price: `₹${price}`,
-          image: product.images.edges[0]?.node.url || '',
-          url: `https://www.bookstaa.com/products/${product.handle}`,
-          discount: discount > 0 ? `${discount}% OFF` : '',
-        });
+          matched.push({
+            title: product.title,
+            author: author || '',
+            price: `₹${price}`,
+            image: product.images.edges[0]?.node.url || '',
+            url: `https://www.bookstaa.com/products/${product.handle}`,
+            discount: discount > 0 ? `${discount}% OFF` : '',
+          });
+        }
       }
     }
 
-    // 🛑 No Results Found
-    if (results.length === 0) {
+    // 📭 Section 6: Return final results
+    if (matched.length === 0) {
       return res.status(200).json({
         products: [],
         text: `❓ No match found for **${query}**.
@@ -160,8 +156,7 @@ Try searching by:
       });
     }
 
-    // ✅ Found Products
-    return res.status(200).json({ products: results });
+    return res.status(200).json({ products: matched });
 
   } catch (err) {
     console.error('❌ search-products fatal error:', err);
