@@ -36,16 +36,15 @@ async function sendMessage() {
     showTypingIndicator(false);
 
     // 🤖 Show assistant reply if available
-    // 📚 Show products if available
-if (data.type === 'products' && data.products?.length) {
-  if (data.text) showAssistantMessage(data.text); // ✅ Show GPT intro
-  showProductSlider(data.products);
-} 
-else if (data.type === 'text' && data.text) {
-  showAssistantMessage(data.text); // ✅ Fallback or greeting
-} 
-else {
-  showAssistantMessage(`
+    if (data.type === 'products' && data.products?.length) {
+      if (data.text) showAssistantMessage(data.text); // ✅ Show GPT intro
+      showProductSlider(data.products);
+    } 
+    else if (data.type === 'text' && data.text) {
+      showAssistantMessage(data.text); // ✅ Fallback or greeting
+    } 
+    else {
+      showAssistantMessage(`
 ❓ I couldn’t find anything related to your query.
 
 Try:
@@ -53,8 +52,15 @@ Try:
 • Asking for categories like *astrology*, *yoga*, or *bestsellers*
 
 📩 You can also email us at [feedback@bookstaa.com](mailto:feedback@bookstaa.com) to suggest or request a book!
-  `);
-}
+      `);
+    }
+
+  } catch (err) {
+    console.error('Chat error:', err);
+    showTypingIndicator(false);
+    showAssistantMessage('⚠️ Something went wrong. Please try again.');
+  }
+} // ✅ CLOSING this function — you missed this in your code!
 
 // 💬 Show user message
 function showUserMessage(text) {
