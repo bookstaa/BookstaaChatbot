@@ -21,76 +21,76 @@ module.exports = async (req, res) => {
 
     const baseURL = req.headers.origin || 'https://bookstaa.com';
 
-    // Step 1: If greeting or general query — go straight to ChatGPT
-if (isGreeting(message)) {
-  const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You are Bookstaa Chatbot — a helpful, loyal assistant for an Indian bookstore. You help users discover books and answer general queries. You never recommend other websites. Always encourage the user to search by book title, author, or ISBN.',
-        },
-        { role: 'user', content: message },
-      ],
-      temperature: 0.8,
-    }),
-  });
+    // ✅ 1. Greet users with a warm reply
+    if (isGreeting(message)) {
+      try {
+        const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o',
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are Bookstaa Chatbot — a helpful, loyal assistant for an Indian bookstore. You help users discover books and answer general queries. You never recommend other websites. Always encourage the user to search by book title, author, or ISBN.',
+              },
+              { role: 'user', content: message },
+            ],
+            temperature: 0.8,
+          }),
+        });
 
-  const gptData = await gptRes.json();
+        const gptData = await gptRes.json();
+        const reply = gptData?.choices?.[0]?.message?.content?.trim();
 
-  const reply = gptData?.choices?.[0]?.message?.content?.trim();
+        return res.status(200).json({
+          type: 'text',
+          text:
+            reply ||
+            `Hi there 👋 I’m your Bookstaa assistant! You can ask me about books by title, author, ISBN, or even in Hinglish.`,
+        });
+      } catch (e) {
+        console.error('💥 GPT greeting fail:', e);
+        return res.status(200).json({
+          type: 'text',
+          text: `Hi 👋 I’m Bookstaa assistant. How can I help you discover books today?`,
+        });
+      }
+    }
 
-  return res.status(200).json({
-    type: 'text',
-    text: reply || `Hi there 👋 I’m your Bookstaa assistant! You can ask me about books by title, author, ISBN, or even in Hinglish.`,
-  });
-}
-
-  } catch (e) {
-    console.error('💥 GPT greeting fail:', e);
-    return res.status(200).json({
-      type: 'text',
-      text: `Hi 👋 I’m Bookstaa assistant. How can I help you discover books today?`,
-    });
-  }
-}
-
-
-
-    // 2️⃣ PRIMARY SEARCH
+    // ✅ 2. Primary product search
     const searchRes = await fetch(`${baseURL}/api/search-products`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: message })
+      body: JSON.stringify({ query: message }),
     });
 
     const searchData = await searchRes.json();
+
     if (searchData.products && searchData.products.length > 0) {
-      // Optional GPT reply to accompany product cards
+      // Optional GPT reply
       const gptReplyRes = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           model: 'gpt-4o',
           messages: [
             {
               role: 'system',
-              content: 'You are Bookstaa Chatbot — assist users in a concise, reader-friendly tone. Suggest books if found. Keep it short and related to query.'
+              content:
+                'You are Bookstaa Chatbot — assist users in a concise, reader-friendly tone. Suggest books if found. Keep it short and related to query.',
             },
-            { role: 'user', content: message }
+            { role: 'user', content: message },
           ],
-          temperature: 0.6
-        })
+          temperature: 0.6,
+        }),
       });
 
       const gptReplyData = await gptReplyRes.json();
@@ -99,63 +99,65 @@ if (isGreeting(message)) {
       return res.status(200).json({
         type: 'products',
         text: softReply,
-        products: searchData.products
+        products: searchData.products,
       });
     }
 
-    // 3️⃣ GPT fallback natural language response
+    // ✅ 3. GPT fallback response
     const fallbackGPT = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         model: 'gpt-4o',
         messages: [
           {
             role: 'system',
-            content: 'You are Bookstaa Chatbot. Suggest useful book-related replies when no result found. Recommend categories like astrology, yoga, or Hindi literature.'
+            content:
+              'You are Bookstaa Chatbot. Suggest useful book-related replies when no result found. Recommend categories like astrology, yoga, or Hindi literature.',
           },
-          { role: 'user', content: message }
+          { role: 'user', content: message },
         ],
-        temperature: 0.8
-      })
+        temperature: 0.8,
+      }),
     });
 
     const gptData = await fallbackGPT.json();
     let reply = gptData.choices?.[0]?.message?.content?.trim() || '';
 
-    // 4️⃣ Extract keywords to retry product search
+    // ✅ 4. Extract keywords for fallback search
     const keywordGPT = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         model: 'gpt-4o',
         messages: [
           {
             role: 'system',
-            content: 'Extract 1-3 keywords from user query for a book search. Return in comma format like: yoga, hindi'
+            content:
+              'Extract 1-3 keywords from user query for a book search. Return in comma format like: yoga, hindi',
           },
-          { role: 'user', content: message }
+          { role: 'user', content: message },
         ],
-        temperature: 0.4
-      })
+        temperature: 0.4,
+      }),
     });
 
     const keywordData = await keywordGPT.json();
     const keywordStr = keywordData.choices?.[0]?.message?.content || '';
     const cleaned = keywordStr.replace(/[^a-zA-Z0-9, ]/g, '').split(',')[0]?.trim();
 
-    // 5️⃣ SECONDARY SEARCH using keywords
+    // ✅ 5. Secondary keyword search
     if (cleaned && cleaned.length > 2) {
       const secondSearch = await fetch(`${baseURL}/api/search-products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: cleaned })
+        body: JSON.stringify({ query: cleaned }),
       });
 
       const secondData = await secondSearch.json();
@@ -163,12 +165,12 @@ if (isGreeting(message)) {
         return res.status(200).json({
           type: 'products',
           text: reply,
-          products: secondData.products
+          products: secondData.products,
         });
       }
     }
 
-    // 6️⃣ Final fallback
+    // ✅ 6. Final fallback
     if (!reply) {
       reply = `❓ I couldn’t find anything for **${message}**.
 
@@ -182,9 +184,8 @@ Still need help? Email [feedback@bookstaa.com](mailto:feedback@bookstaa.com) ✉
 
     return res.status(200).json({
       type: 'text',
-      text: reply
+      text: reply,
     });
-
   } catch (err) {
     console.error('💥 /api/chat error:', err);
     return res.status(500).json({ error: 'Chat failed', details: err.message });
