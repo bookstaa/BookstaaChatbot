@@ -1,5 +1,3 @@
-// /script.js
-
 document.getElementById('send-button').addEventListener('click', sendMessage);
 document.getElementById('user-input').addEventListener('keypress', e => {
   if (e.key === 'Enter') sendMessage();
@@ -22,10 +20,10 @@ async function sendMessage() {
 
     const data = await res.json();
 
-    if (data.type === 'product' && data.products?.length) {
+    if (data.type === 'products' && data.products?.length) {
       showProductCards(data.products);
     } else if (data.type === 'text') {
-      showAssistantMessage(data.reply);
+      showAssistantMessage(data.text); // ✅ Fixed this line
     } else {
       showAssistantMessage("❓ I couldn’t find anything for that. Try asking for a **book title**, **author**, or **category**.");
     }
@@ -67,7 +65,7 @@ function showProductCards(products) {
 
     card.innerHTML = `
       <img src="${product.image}" alt="${product.title}" />
-      <h4>${product.title}</h4>
+      <h4>${truncateText(product.title, 50)}</h4>
       <p>${product.author}</p>
       <p><strong>₹${product.price}</strong></p>
       <a href="${product.url}" target="_blank">View</a>
@@ -78,4 +76,9 @@ function showProductCards(products) {
 
   chatBox.appendChild(container);
   chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// ✂️ Optional: Truncate long titles for cleaner display
+function truncateText(text, maxLength) {
+  return text.length > maxLength ? text.slice(0, maxLength - 1) + '…' : text;
 }
