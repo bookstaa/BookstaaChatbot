@@ -49,8 +49,7 @@ module.exports = async (req, res) => {
     const gptData = await gptRes.json();
     console.log('🧠 GPT fallback response:', JSON.stringify(gptData, null, 2));
 
-    let reply;
-
+    let reply = '';
     try {
       reply = gptData.choices?.[0]?.message?.content?.trim();
     } catch (e) {
@@ -68,24 +67,53 @@ We're adding new books regularly at [Bookstaa.com](https://bookstaa.com) 📚`;
       return res.status(200).json({ type: 'text', text: reply });
     }
 
-    // ✅ Step 4: Re-check using reply keywords from ChatGPT
-    const fallbackSearchRes = await fetch(`${baseURL}/api/search-products`, {
+    // ✅ Step 4: Ask ChatGPT to extract clean keywords from user message
+    const keywordRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: reply }),
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Extract 1 to 3 short keywords from the user’s query that could help search books from a bookstore catalog. Return them as a comma-separated list. Example: "Yoga books in Hindi" → "yoga, hindi"',
+          },
+          { role: 'user', content: message },
+        ],
+        temperature: 0.5,
+      }),
     });
 
-    const fallbackSearchData = await fallbackSearchRes.json();
+    const keywordData = await keywordRes.json();
+    const keywordStr = keywordData.choices?.[0]?.message?.content || '';
+    const cleanedQuery = keywordStr.replace(/[^a-zA-Z0-9, ]/g, '').split(',')[0]?.trim();
 
-    if (fallbackSearchData.products && fallbackSearchData.products.length > 0) {
-      return res.status(200).json({
-        type: 'products',
-        products: fallbackSearchData.products,
-        text: reply, // include GPT reply for context
+    console.log('🔎 Extracted keyword(s):', keywordStr);
+
+    // ✅ Step 5: Try another product search using extracted keywords
+    if (cleanedQuery && cleanedQuery.length > 2) {
+      const secondSearchRes = await fetch(`${baseURL}/api/search-products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: cleanedQuery }),
       });
+
+      const secondSearchData = await secondSearchRes.json();
+
+      if (secondSearchData.products && secondSearchData.products.length > 0) {
+        return res.status(200).json({
+          type: 'products',
+          products: secondSearchData.products,
+          text: reply,
+        });
+      }
     }
 
-    // ✅ Return only ChatGPT fallback if still no product found
+    // Final fallback — return GPT reply only
     return res.status(200).json({ type: 'text', text: reply });
 
   } catch (err) {
