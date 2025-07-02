@@ -1,6 +1,4 @@
-// 📁 /api/search-products.js
-// ✅ Updated: 2025-07-02 – Smart Search (BIBLE Priority) with proper product structure
-
+// 📦 Section 0: Imports & Config
 const fetch = require('node-fetch');
 
 const SHOPIFY_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
@@ -8,24 +6,23 @@ const SHOPIFY_STOREFRONT_API_TOKEN = process.env.SHOPIFY_STOREFRONT_API_TOKEN;
 
 const gql = String.raw;
 
-// 🔤 Section 1: Normalize input
-function normalize(str) {
-  return str?.toLowerCase().replace(/[^a-z0-9\s]/gi, '').trim();
-}
+// 📦 Section 1: Normalize String
+const normalize = str =>
+  str?.toLowerCase().replace(/[^a-z0-9\s]/gi, '').trim();
 
+// 📦 Section 2: API Handler
 module.exports = async (req, res) => {
   try {
-    // 🚀 Section 2: Parse and validate user query
     const { query } = req.body;
     if (!query || query.length < 2) {
       return res.status(400).json({ error: 'Missing query' });
     }
 
-    const isISBN = /^\d{10}(\d{3})?$/.test(query.trim());
     const q = normalize(query);
-    const fuzzy = q.slice(0, 5); // first 5 chars for fuzzy fallback
+    const isISBN = /^\d{10}(\d{3})?$/.test(query.trim());
+    const fuzzy = q.slice(0, 5);
 
-    // 🧠 Section 3: Query Shopify Storefront API
+    // 📦 Section 3: Shopify Storefront GraphQL Request
     const response = await fetch(`https://${SHOPIFY_DOMAIN}/api/2024-04/graphql.json`, {
       method: 'POST',
       headers: {
@@ -77,13 +74,13 @@ module.exports = async (req, res) => {
 
     const result = await response.json();
     if (!result?.data?.products) {
-      console.error('⚠️ Shopify API returned no products:', result);
+      console.error('⚠️ Shopify API did not return products:', result);
       return res.status(500).json({ error: 'Shopify API error', details: result });
     }
 
-    // 🧪 Section 4: Match logic per product (BIBLE rules)
+    // 📦 Section 4: Process Products
     const products = result.data.products.edges.map(edge => edge.node);
-    const matched = [];
+    const results = [];
 
     for (const product of products) {
       const title = normalize(product.title);
@@ -105,58 +102,67 @@ module.exports = async (req, res) => {
       const readersCategory = metafields['readers_category'] || '';
       const authorLocation = metafields['author_location'] || '';
 
+      // 📦 Section 5: Smart Matching Logic (BIBLE priority)
       let match = false;
 
       if (title.includes(q)) {
-        match = true; // Title
+        match = true; // 1. Title
       } else if (author.includes(q) || q.split(' ').every(word => author.includes(word))) {
-        match = true; // Author
-      } else if ((isISBN && isbn.includes(q)) || readersCategory.includes(q) || language.includes(q) || authorLocation.includes(q)) {
-        match = true; // Metafields
-      } else if (tags.some(tag => tag.includes(q)) || vendor.includes(q) || productType.includes(q) || description.includes(q)) {
-        match = true; // Secondary fields
+        match = true; // 2. Author
+      } else if (
+        (isISBN && isbn.includes(q)) ||
+        readersCategory.includes(q) ||
+        language.includes(q) ||
+        authorLocation.includes(q)
+      ) {
+        match = true; // 3. Metafields
+      } else if (
+        tags.some(tag => tag.includes(q)) ||
+        vendor.includes(q) ||
+        productType.includes(q) ||
+        description.includes(q)
+      ) {
+        match = true; // 4. Vendor, Tags, Description
       } else if (title.startsWith(fuzzy) || author.startsWith(fuzzy)) {
-        match = true; // Fuzzy match
+        match = true; // 5. Fuzzy Matching
       }
 
-      // 🎯 Section 5: Final data push
-      if (match) {
-        const variant = product.variants.edges.find(v =>
-          normalize(v.node.title).includes('paperback')
-        )?.node;
+      // 🎯 Prefer Paperback variant
+      const variant = product.variants.edges.find(v =>
+        normalize(v.node.title).includes('paperback')
+      )?.node || product.variants.edges[0]?.node;
 
-        if (variant) {
-          const price = parseFloat(variant.price?.amount || '0');
-          const compare = parseFloat(variant.compareAtPrice?.amount || '0');
-          const discount = compare > price ? Math.round(((compare - price) / compare) * 100) : 0;
+      if (match && variant) {
+        const price = parseFloat(variant.price?.amount || '0');
+        const compare = parseFloat(variant.compareAtPrice?.amount || '0');
+        const discount = compare > price ? Math.round(((compare - price) / compare) * 100) : 0;
 
-          matched.push({
-            title: product.title,
-            author: author || '',
-            price: `₹${price}`,
-            image: product.images.edges[0]?.node.url || '',
-            url: `https://www.bookstaa.com/products/${product.handle}`,
-            discount: discount > 0 ? `${discount}% OFF` : '',
-          });
-        }
+        results.push({
+          title: product.title,
+          author: metafields['author01'] || '',
+          price: `₹${price}`,
+          image: product.images.edges[0]?.node.url || '',
+          url: `https://www.bookstaa.com/products/${product.handle}`,
+          discount: discount > 0 ? `${discount}% OFF` : '',
+        });
       }
     }
 
-    // 📭 Section 6: Return final results
-    if (matched.length === 0) {
+    // 📦 Section 6: Return Final Results or Fallback
+    if (results.length === 0) {
       return res.status(200).json({
         products: [],
         text: `❓ No match found for **${query}**.
 
 Try searching by:
 • **Book title**, **author**, or **ISBN**
-• Example: "Yoga in Hindi", "Devdutt Pattanaik", "9781234567890"
+• Example: *Yoga in Hindi*, *Devdutt Pattanaik*, *9781234567890*
 
 📩 Suggest a book at [feedback@bookstaa.com](mailto:feedback@bookstaa.com)`,
       });
     }
 
-    return res.status(200).json({ products: matched });
+    return res.status(200).json({ products: results });
 
   } catch (err) {
     console.error('❌ search-products fatal error:', err);
