@@ -47,6 +47,11 @@ if (isGreeting(message)) {
     const gptData = await gptRes.json();
     const reply = gptData?.choices?.[0]?.message?.content?.trim();
 
+return res.status(200).json({
+  type: 'text',
+  text: reply || `Hi there 👋 I’m your Bookstaa assistant! You can ask me about books by title, author, ISBN, or even in Hinglish.`
+});
+
     if (reply) {
       return res.status(200).json({ type: 'text', text: reply });
     } else {
