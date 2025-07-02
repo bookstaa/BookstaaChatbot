@@ -152,8 +152,12 @@ We're adding new books regularly at [Bookstaa.com](https://bookstaa.com) 📚`;
       }
     }
 
-    // Step 7: Fallback to GPT reply only
-    return res.status(200).json({ type: 'text', text: reply });
+  // Step 7: Always return GPT reply even if no products
+return res.status(200).json({
+  type: 'text',
+  text: reply || `❓ I couldn’t find anything for **${message}**. Try again with a title, author, or category.`,
+});
+
 
   } catch (err) {
     console.error('💥 /api/chat error:', err);
