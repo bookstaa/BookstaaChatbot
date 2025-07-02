@@ -97,7 +97,9 @@ module.exports = async (req, res) => {
 
       const metafields = {};
       for (const m of product.metafields || []) {
-        metafields[m.key] = normalize(m.value);
+        if (m && m.key && m.value) {
+          metafields[m.key] = normalize(m.value);
+        }
       }
 
       const matches =
