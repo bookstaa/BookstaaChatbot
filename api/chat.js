@@ -1,13 +1,12 @@
 const fetch = require('node-fetch');
-
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-// Keywords to detect general or greeting queries
+// ✅ Detect greetings
 const isGreeting = (input) => {
   const greetings = [
     'hello', 'hi', 'namaste', 'how are you', 'how can you help',
     'what can you do', 'who are you', 'kya kar rahe ho', 'yo', 'hey',
-    'kaise ho', 'tum kaun ho', 'can you help', 'what is this', 'bookstaa',
+    'kaise ho', 'tum kaun ho', 'can you help', 'what is this', 'bookstaa'
   ];
   const norm = input.toLowerCase();
   return greetings.some(greet => norm.includes(greet));
@@ -22,168 +21,153 @@ module.exports = async (req, res) => {
 
     const baseURL = req.headers.origin || 'https://bookstaa.com';
 
-    // Step 1: If greeting or general query — go straight to ChatGPT
+    // 1️⃣ GREETING → respond instantly with GPT
     if (isGreeting(message)) {
       const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           model: 'gpt-4o',
           messages: [
             {
               role: 'system',
-              content:
-                'You are Bookstaa Chatbot — a helpful, loyal assistant for an Indian bookstore. You help users discover books and answer general queries. You never recommend other websites. Always encourage the user to search by book title, author, or ISBN.',
+              content: 'You are Bookstaa Chatbot — a friendly, Hinglish-savvy assistant for an Indian bookstore. Answer greetings warmly, and encourage the user to search books by title, author, or ISBN. Never suggest outside stores.'
             },
-            { role: 'user', content: message },
+            { role: 'user', content: message }
           ],
-          temperature: 0.8,
-        }),
+          temperature: 0.7
+        })
       });
 
       const gptData = await gptRes.json();
-      const reply = gptData.choices?.[0]?.message?.content?.trim() || `Hi there 👋 I’m your Bookstaa assistant! You can ask me about books by title, author, ISBN, or even ask in Hinglish.`;
+      const reply = gptData.choices?.[0]?.message?.content?.trim() || 'Hi there 👋 How can I help you find a great book today?';
 
       return res.status(200).json({ type: 'text', text: reply });
     }
 
-    // Step 2: Primary product search using original message
-    const initialSearchRes = await fetch(`${baseURL}/api/search-products`, {
+    // 2️⃣ PRIMARY SEARCH
+    const searchRes = await fetch(`${baseURL}/api/search-products`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: message }),
-    });
-    const initialSearchData = await initialSearchRes.json();
-
-    // Step 3: If products found on first try — return products immediately
-    if (initialSearchData.products && initialSearchData.products.length > 0) {
-  // Also generate a soft reply to go with the product match
-  const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You are Bookstaa Chatbot — a helpful, loyal assistant for an Indian bookstore. Respond in a friendly, engaging tone. Suggest books, categories, or reply helpfully based on context. Keep it short.',
-        },
-        { role: 'user', content: message },
-      ],
-      temperature: 0.7,
-    }),
-  });
-
-  const gptData = await gptRes.json();
-  const gptReply = gptData.choices?.[0]?.message?.content?.trim() || '';
-
-  return res.status(200).json({
-    type: 'products',
-    text: gptReply, // ✅ Show both GPT reply and product cards
-    products: initialSearchData.products,
-  });
-}
-
-
-    // Step 4: Ask GPT for fallback natural language reply
-    const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are Bookstaa Chatbot — a helpful, loyal assistant for an Indian bookstore. You help users discover books based on their queries and intent. You never recommend other websites. Always encourage the user to search by book title, author, or ISBN.',
-          },
-          { role: 'user', content: message },
-        ],
-        temperature: 0.8,
-      }),
+      body: JSON.stringify({ query: message })
     });
 
-    const gptData = await gptRes.json();
-    let reply = '';
-
-    try {
-      reply = gptData.choices?.[0]?.message?.content?.trim();
-    } catch (e) {
-      console.error('🛑 GPT reply extraction failed:', e);
-    }
-
-    if (!reply) {
-      reply = `❓ I couldn’t find anything for: **${message}**
-
-You can try:
-• Searching by **book title**, **author name**, or **ISBN**
-• Asking for **categories** like *astrology*, *Vedic studies*, or *bestsellers*
-
-We're adding new books regularly at [Bookstaa.com](https://bookstaa.com) 📚`;
-    }
-
-    // Step 5: Ask GPT to extract keyword(s)
-    const keywordRes = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'Extract 1 to 3 short keywords from the user’s query that could help search books from a bookstore catalog. Return them as a comma-separated list. Example: "Yoga books in Hindi" → "yoga, hindi"',
-          },
-          { role: 'user', content: message },
-        ],
-        temperature: 0.5,
-      }),
-    });
-
-    const keywordData = await keywordRes.json();
-    const keywordStr = keywordData.choices?.[0]?.message?.content || '';
-    const cleanedQuery = keywordStr.replace(/[^a-zA-Z0-9, ]/g, '').split(',')[0]?.trim();
-
-    console.log('🔎 Extracted keyword(s):', keywordStr);
-
-    // Step 6: Secondary product search using cleaned keyword
-    if (cleanedQuery && cleanedQuery.length > 2) {
-      const secondSearchRes = await fetch(`${baseURL}/api/search-products`, {
+    const searchData = await searchRes.json();
+    if (searchData.products && searchData.products.length > 0) {
+      // Optional GPT reply to accompany product cards
+      const gptReplyRes = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: cleanedQuery }),
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are Bookstaa Chatbot — assist users in a concise, reader-friendly tone. Suggest books if found. Keep it short and related to query.'
+            },
+            { role: 'user', content: message }
+          ],
+          temperature: 0.6
+        })
       });
 
-      const secondSearchData = await secondSearchRes.json();
+      const gptReplyData = await gptReplyRes.json();
+      const softReply = gptReplyData.choices?.[0]?.message?.content?.trim() || '';
 
-      if (secondSearchData.products && secondSearchData.products.length > 0) {
+      return res.status(200).json({
+        type: 'products',
+        text: softReply,
+        products: searchData.products
+      });
+    }
+
+    // 3️⃣ GPT fallback natural language response
+    const fallbackGPT = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are Bookstaa Chatbot. Suggest useful book-related replies when no result found. Recommend categories like astrology, yoga, or Hindi literature.'
+          },
+          { role: 'user', content: message }
+        ],
+        temperature: 0.8
+      })
+    });
+
+    const gptData = await fallbackGPT.json();
+    let reply = gptData.choices?.[0]?.message?.content?.trim() || '';
+
+    // 4️⃣ Extract keywords to retry product search
+    const keywordGPT = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'Extract 1-3 keywords from user query for a book search. Return in comma format like: yoga, hindi'
+          },
+          { role: 'user', content: message }
+        ],
+        temperature: 0.4
+      })
+    });
+
+    const keywordData = await keywordGPT.json();
+    const keywordStr = keywordData.choices?.[0]?.message?.content || '';
+    const cleaned = keywordStr.replace(/[^a-zA-Z0-9, ]/g, '').split(',')[0]?.trim();
+
+    // 5️⃣ SECONDARY SEARCH using keywords
+    if (cleaned && cleaned.length > 2) {
+      const secondSearch = await fetch(`${baseURL}/api/search-products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: cleaned })
+      });
+
+      const secondData = await secondSearch.json();
+      if (secondData.products && secondData.products.length > 0) {
         return res.status(200).json({
           type: 'products',
           text: reply,
-          products: secondSearchData.products,
+          products: secondData.products
         });
       }
     }
 
-  // Step 7: Always return GPT reply even if no products
-return res.status(200).json({
-  type: 'text',
-  text: reply || `❓ I couldn’t find anything for **${message}**. Try again with a title, author, or category.`,
-});
+    // 6️⃣ Final fallback
+    if (!reply) {
+      reply = `❓ I couldn’t find anything for **${message}**.
 
+Try searching by:
+• Book **title** (e.g. "Bhagavad Gita")
+• **Author name** (e.g. "Devdutt Pattanaik")
+• **ISBN** or category like *astrology*
+
+Still need help? Email [feedback@bookstaa.com](mailto:feedback@bookstaa.com) ✉️`;
+    }
+
+    return res.status(200).json({
+      type: 'text',
+      text: reply
+    });
 
   } catch (err) {
     console.error('💥 /api/chat error:', err);
