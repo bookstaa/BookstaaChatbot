@@ -1,9 +1,7 @@
-// /api/search-products.js
-
 const fetch = require('node-fetch');
 
-const SHOPIFY_DOMAIN = 'b80e25.myshopify.com';
-const SHOPIFY_STOREFRONT_API_KEY = process.env.SHOPIFY_STOREFRONT_API_KEY;
+const SHOPIFY_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
+const SHOPIFY_STOREFRONT_API_TOKEN = process.env.SHOPIFY_STOREFRONT_API_TOKEN;
 
 const gql = String.raw;
 
@@ -23,7 +21,7 @@ module.exports = async (req, res) => {
     const response = await fetch(`https://${SHOPIFY_DOMAIN}/api/2024-04/graphql.json`, {
       method: 'POST',
       headers: {
-        'X-Shopify-Storefront-Access-Token': SHOPIFY_STOREFRONT_API_KEY,
+        'X-Shopify-Storefront-Access-Token': SHOPIFY_STOREFRONT_API_TOKEN,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -60,10 +58,10 @@ module.exports = async (req, res) => {
                     }
                   }
                   metafields(identifiers: [
-                    { namespace: "Books", key: "author" },
-                    { namespace: "Books", key: "isbn13" },
+                    { namespace: "Books", key: "author01" },
+                    { namespace: "Books", key: "Book-ISBN" },
                     { namespace: "Books", key: "language" },
-                    { namespace: "Books", key: "reader_category" },
+                    { namespace: "books", key: "readers_category" },
                     { namespace: "Books", key: "author_location" }
                   ]) {
                     key
@@ -79,7 +77,6 @@ module.exports = async (req, res) => {
 
     const result = await response.json();
 
-    // ✅ Safety check to prevent crashing
     if (!result || !result.data || !result.data.products) {
       console.error('⚠️ Shopify API did not return products:', JSON.stringify(result));
       return res.status(500).json({ error: 'Shopify API error', details: result });
@@ -106,11 +103,11 @@ module.exports = async (req, res) => {
       const matches =
         title.includes(q) ||
         title.startsWith(q.slice(0, 5)) ||
-        (isISBN && metafields.isbn13?.includes(q)) ||
-        metafields.author?.includes(q) ||
-        metafields.language?.includes(q) ||
-        metafields.reader_category?.includes(q) ||
-        metafields.author_location?.includes(q) ||
+        (isISBN && metafields['Book-ISBN']?.includes(q)) ||
+        metafields['author01']?.includes(q) ||
+        metafields['language']?.includes(q) ||
+        metafields['readers_category']?.includes(q) ||
+        metafields['author_location']?.includes(q) ||
         tags.some(tag => tag.includes(q)) ||
         vendor.includes(q) ||
         description.includes(q) ||
@@ -128,7 +125,7 @@ module.exports = async (req, res) => {
 
         results.push({
           title: product.title,
-          author: metafields.author || '',
+          author: metafields['author01'] || '',
           price: `₹${price}`,
           image: product.images.edges[0]?.node.url || '',
           url: `https://www.bookstaa.com/products/${product.handle}`,
