@@ -49,13 +49,13 @@ module.exports = async (req, res) => {
                   variants(first: 1) {
                     edges {
                       node {
+                        title
                         price {
                           amount
                         }
                         compareAtPrice {
                           amount
                         }
-                        title
                       }
                     }
                   }
@@ -78,8 +78,14 @@ module.exports = async (req, res) => {
     });
 
     const result = await response.json();
-    const products = result.data.products.edges.map(edge => edge.node);
 
+    // ✅ Safety check to prevent crashing
+    if (!result || !result.data || !result.data.products) {
+      console.error('⚠️ Shopify API did not return products:', JSON.stringify(result));
+      return res.status(500).json({ error: 'Shopify API error', details: result });
+    }
+
+    const products = result.data.products.edges.map(edge => edge.node);
     const q = normalize(query);
     const results = [];
 
@@ -93,27 +99,18 @@ module.exports = async (req, res) => {
       const variantTitle = normalize(variant.title);
 
       const metafields = {};
-      for (const m of product.metafields) {
+      for (const m of product.metafields || []) {
         metafields[m.key] = normalize(m.value);
       }
 
       const matches =
-        // Priority 1: Title
         title.includes(q) ||
         title.startsWith(q.slice(0, 5)) ||
-
-        // Priority 2: ISBN (only if numeric)
         (isISBN && metafields.isbn13?.includes(q)) ||
-
-        // Priority 3: Author
         metafields.author?.includes(q) ||
-
-        // Priority 4: Metafields
         metafields.language?.includes(q) ||
         metafields.reader_category?.includes(q) ||
         metafields.author_location?.includes(q) ||
-
-        // Priority 5: Other fields
         tags.some(tag => tag.includes(q)) ||
         vendor.includes(q) ||
         description.includes(q) ||
@@ -142,7 +139,7 @@ module.exports = async (req, res) => {
 
     res.status(200).json({ products: results });
   } catch (err) {
-    console.error('❌ search-products error:', err);
-    res.status(500).json({ error: 'Search failed' });
+    console.error('❌ search-products fatal error:', err);
+    res.status(500).json({ error: 'Search failed', details: err.message });
   }
 };
