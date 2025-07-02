@@ -20,12 +20,11 @@ async function sendMessage() {
 
     const data = await res.json();
 
+    if (data.text) showAssistantMessage(data.text); // always show text if present
     if (data.type === 'products' && data.products?.length) {
-      showProductCards(data.products);
-    } else if (data.type === 'text') {
-      showAssistantMessage(data.text); // ✅ Fixed this line
-    } else {
-      showAssistantMessage("❓ I couldn’t find anything for that. Try asking for a **book title**, **author**, or **category**.");
+      showProductSlider(data.products);
+    } else if (!data.text) {
+      showAssistantMessage("❓ I couldn’t find anything. Try searching by **title**, **author**, or **category**.");
     }
   } catch (err) {
     console.error('Chat error:', err);
@@ -43,42 +42,44 @@ function showUserMessage(text) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 🤖 Show assistant's reply
+// 🤖 Show assistant message
 function showAssistantMessage(text) {
   const chatBox = document.getElementById('chat-box');
   const msg = document.createElement('div');
   msg.className = 'chat assistant';
-  msg.innerText = text;
+  msg.innerHTML = marked.parse(text); // Markdown rendering
   chatBox.appendChild(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 📚 Show product cards
-function showProductCards(products) {
+// 🎞️ Show products in slider format
+function showProductSlider(products) {
   const chatBox = document.getElementById('chat-box');
-  const container = document.createElement('div');
-  container.className = 'chat product-list';
+  const wrapper = document.createElement('div');
+  wrapper.className = 'chat product-slider-wrapper';
+
+  const slider = document.createElement('div');
+  slider.className = 'product-slider';
 
   products.forEach(product => {
     const card = document.createElement('div');
     card.className = 'product-card';
-
     card.innerHTML = `
       <img src="${product.image}" alt="${product.title}" />
-      <h4>${truncateText(product.title, 50)}</h4>
-      <p>${product.author}</p>
-      <p><strong>₹${product.price}</strong></p>
-      <a href="${product.url}" target="_blank">View</a>
+      <h4 title="${product.title}">${truncateText(product.title, 50)}</h4>
+      <p class="author">${product.author || ''}</p>
+      <p class="price">${product.discount ? `<span class="discount">${product.discount}</span>` : ''} ₹${product.price}</p>
+      <a href="${product.url}" target="_blank" class="view-btn">View</a>
     `;
-
-    container.appendChild(card);
+    slider.appendChild(card);
   });
 
-  chatBox.appendChild(container);
+  wrapper.appendChild(slider);
+  chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// ✂️ Optional: Truncate long titles for cleaner display
+// ✂️ Truncate long title
 function truncateText(text, maxLength) {
   return text.length > maxLength ? text.slice(0, maxLength - 1) + '…' : text;
 }
