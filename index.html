@@ -2,17 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bookstaa Chatbot</title>
+
+  <!-- Link to your external stylesheet -->
   <link rel="stylesheet" href="style.css" />
+  
+  <!-- Marked.js for markdown rendering in chat messages -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
   <main class="chat-container" role="main" aria-label="Bookstaa Chatbot">
-    
-    <!-- 📦 Chat Messages -->
-    <section id="chat-box" class="chat-box" aria-live="polite" aria-atomic="true"></section>
 
-    <!-- 💡 Suggested Prompts -->
+    <!-- Chat messages container -->
+    <section id="chat-box" class="chat-box" aria-live="polite" aria-atomic="true" tabindex="0">
+      <!-- Messages will be dynamically appended here -->
+    </section>
+
+    <!-- Suggested quick prompt buttons -->
     <nav class="suggested-prompts" aria-label="Quick Suggestions">
       <button class="suggested-prompt">📖 Search by Title</button>
       <button class="suggested-prompt">🔮 Best books on Astrology</button>
@@ -21,7 +28,7 @@
       <button class="suggested-prompt">🟢 Connect to WhatsApp LIVE CHAT</button>
     </nav>
 
-    <!-- ⌨️ User Input -->
+    <!-- User input form -->
     <div class="input-container" role="form" aria-label="Send message">
       <input
         type="text"
@@ -30,16 +37,20 @@
         aria-label="Your message"
         autocomplete="off"
       />
-      <button onclick="sendMessage()" aria-label="Send Message">Send</button>
+      <button type="button" onclick="sendMessage()" aria-label="Send Message">Send</button>
     </div>
+
   </main>
 
-  <!-- 🔋 Branding Footer -->
-  <footer class="branding">
-    🤖 Powered by ChatGPT · <a href="https://www.bookstaa.com" target="_blank" style="color:inherit;text-decoration:underline;">Bookstaa.com</a>
+  <!-- Branding footer -->
+  <footer class="branding" role="contentinfo">
+    🤖 Powered by ChatGPT · 
+    <a href="https://www.bookstaa.com" target="_blank" rel="noopener noreferrer" style="color:inherit; text-decoration: underline;">
+      Bookstaa.com
+    </a>
   </footer>
 
-  <!-- 🚀 Script Loader -->
+  <!-- Your chatbot frontend logic -->
   <script src="script.js"></script>
 </body>
 </html>
