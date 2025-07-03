@@ -268,12 +268,3 @@ body.dark-mode .buy-now {
   border: 1px dashed #ffcd4d;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
-
-/* 💛 Bookstaa Branding Footer */
-.branding::after {
-  content: "Powered by ChatGPT • Bookstaa.com 📚";
-  display: block;
-  margin-top: 6px;
-  font-size: 11px;
-  color: #aaa;
-}
