@@ -1,7 +1,6 @@
 // 📦 Imports & Config
 const fetch = require('node-fetch');
 const normalize = (str) => str?.toLowerCase().replace(/[^a-z0-9\s]/gi, '').trim() || '';
-
 const BOOKSTAA_JSON_URL = process.env.BOOKSTAA_JSON_URL;
 
 module.exports = async (req, res) => {
@@ -14,6 +13,26 @@ module.exports = async (req, res) => {
     const normQuery = normalize(query);
     const fuzzy = normQuery.slice(0, 5);
     const queryTokens = normQuery.split(' ').filter(Boolean);
+
+    // 🔁 Step 1: Synonym Mapping
+    const synonymMap = {
+      kids: ['children', 'child', 'young readers', 'youth'],
+      children: ['kids', 'child', 'young'],
+      sandhu: ['jatinder sandhu', 'jatinder pal singh sandhu'],
+      jatinder: ['sandhu', 'jatinder pal singh sandhu'],
+      beginner: ['introductory', 'starter', 'basic'],
+      astrology: ['jyotish', 'jyotisha', 'vedic astrology'],
+      sanskrit: ['vedic'],
+      yoga: ['meditation', 'asanas'],
+      hindi: ['devanagari']
+    };
+
+    const expandedTokens = [...queryTokens];
+    queryTokens.forEach(token => {
+      if (synonymMap[token]) {
+        expandedTokens.push(...synonymMap[token].map(normalize));
+      }
+    });
 
     // 📦 Fetch full product list from Google Drive
     const jsonRes = await fetch(BOOKSTAA_JSON_URL);
@@ -41,13 +60,13 @@ module.exports = async (req, res) => {
         author_location: normalize(metafields['author_location'] || '')
       };
 
-      // 🎯 Smart weighted scoring with token matching
+      // 🎯 Smart weighted scoring with token OR synonym matching
       let score = 0;
 
       for (const field in fields) {
         const value = fields[field];
-        const allMatch = queryTokens.every(token => value.includes(token));
-        if (allMatch) {
+        const anyMatch = expandedTokens.some(token => value.includes(token));
+        if (anyMatch) {
           if (field === 'title') score += 100;
           else if (field === 'handle') score += 100;
           else if (field === 'vendor') score += 50;
@@ -58,8 +77,8 @@ module.exports = async (req, res) => {
       }
 
       for (const [key, value] of Object.entries(metafieldMap)) {
-        const allMatch = queryTokens.every(token => value.includes(token));
-        if (allMatch) {
+        const anyMatch = expandedTokens.some(token => value.includes(token));
+        if (anyMatch) {
           if (key === 'author01') score += 80;
           else if (key === 'readers_category') score += 70;
           else if (key === 'isbn') score += 65;
@@ -69,7 +88,7 @@ module.exports = async (req, res) => {
         }
       }
 
-      // 🔍 Fuzzy bonus
+      // 🔍 Fuzzy match bonus
       if ((fields.title || '').startsWith(fuzzy) || (metafieldMap['author01'] || '').startsWith(fuzzy)) {
         score += 15;
       }
