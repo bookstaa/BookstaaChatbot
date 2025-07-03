@@ -84,16 +84,7 @@ function showAssistantMessage(text) {
   chatBox.appendChild(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
 
-  // 🏷️ Add branded footer only once
-  if (!document.querySelector('.branding')) {
-    const branding = document.createElement('div');
-    branding.className = 'branding';
-    branding.innerHTML = '🔮 Powered by ChatGPT • Bookstaa.com';
-    chatBox.appendChild(branding);
-  }
-}
-
-// 🕐 Section 7: Typing Dots
+  // 🕐 Section 7: Typing Dots
 function showTypingIndicator(show) {
   const chatBox = document.getElementById('chat-box');
   const existing = document.getElementById('typing-indicator');
