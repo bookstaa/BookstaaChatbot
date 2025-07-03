@@ -5,13 +5,12 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 // 📦 Section 1: Greeting Detection
 const isGreeting = (input) => {
   const greetings = [
-    'hello', 'hi', 'namaste', 'how are you', 'how can you help',
-    'what can you do', 'who are you', 'kya kar rahe ho', 'yo', 'hey',
-    'kaise ho', 'tum kaun ho', 'can you help', 'what is this', 'bookstaa'
+    'hello', 'hi', 'namaste', 'yo', 'hey', 'bookstaa'
   ];
   const norm = input.toLowerCase().replace(/[^a-z0-9\s]/gi, '').trim();
-  return greetings.some(g => norm.includes(g));
+  return greetings.includes(norm);
 };
+
 
 // 📦 Section 2: Hinglish Normalizer
 const normalizeHinglish = (str) => {
