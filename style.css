@@ -126,8 +126,9 @@ button {
 
 .product-details {
   text-align: center;
-  margin-top: 8px;
+  padding: 10px 8px;
 }
+
 .product-title {
   font-weight: 600;
   font-size: 14px;
