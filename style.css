@@ -1,6 +1,7 @@
 /* --- START: Base Layout --- */
 body {
-  font-family: 'Segoe UI', sans-serif;
+  body {
+  font-family: 'Segoe UI', 'Noto Sans', sans-serif;
   background: #f4f7fb;
   margin: 0;
   padding: 0;
