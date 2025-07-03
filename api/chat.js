@@ -4,9 +4,7 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 // 📦 Section 1: Greeting Detection
 const isGreeting = (input) => {
-  const greetings = [
-    'hello', 'hi', 'namaste', 'yo', 'hey', 'bookstaa'
-  ];
+  const greetings = ['hello', 'hi', 'namaste', 'yo', 'hey', 'bookstaa'];
   const norm = input.toLowerCase().replace(/[^a-z0-9\s]/gi, '').trim();
   return greetings.includes(norm);
 };
@@ -75,9 +73,9 @@ module.exports = async (req, res) => {
 
     // ✅ Products Found
     if (searchData.products?.length > 0) {
-      const limitedProducts = searchData.products.slice(0, 5);
-      const productList = limitedProducts.map(p => `*${p.title}*`).join(', ');
-      const reply = `📚 I found the following books that match your query: ${productList}. Let me know if you'd like more info on any of them!`;
+      const topProducts = searchData.products.slice(0, 5);
+      const summaryTitles = topProducts.map(p => `*${p.title}*`).join(', ');
+      const reply = `📚 Based on your interest in **"${message}"**, here are some books you might like: ${summaryTitles}.\nLet me know if you'd like more info on any of them!`;
 
       return res.status(200).json({
         type: 'products',
@@ -142,7 +140,7 @@ module.exports = async (req, res) => {
 
       const secondData = await secondRes.json();
       if (secondData.products?.length > 0) {
-        const retryReply = `🔍 Based on your interest in "${keyword}", here are some books you might like:`;
+        const retryReply = `🔍 Based on your interest in **"${keyword}"**, here are some books you might like:`;
         return res.status(200).json({
           type: 'products',
           text: retryReply,
