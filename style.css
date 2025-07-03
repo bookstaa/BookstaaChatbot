@@ -114,13 +114,13 @@ button {
 
 .product-price-overlay {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: -2px;
+  right: -2px;
   background: rgba(0, 0, 0, 0.75);
   color: #fff;
   font-size: 13px;
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: 2px 4px;
+  border-radius: 3px;
   z-index: 2;
 }
 
