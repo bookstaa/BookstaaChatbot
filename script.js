@@ -105,8 +105,8 @@ function showTypingIndicator(show) {
 function showProductSlider(products) {
   const chatBox = document.getElementById('chat-box');
 
-  // Clear previous product sliders if any
-  chatBox.querySelectorAll('.product-slider').forEach(el => el.remove());
+  // ❌ REMOVE THIS to keep old product cards
+  // chatBox.querySelectorAll('.product-slider').forEach(el => el.remove());
 
   const wrapper = document.createElement('div');
   wrapper.className = 'product-slider';
