@@ -122,11 +122,13 @@ function showProductSlider(products) {
 
     card.innerHTML = `
       <a href="${product.url}" target="_blank" rel="noopener noreferrer">
-        <img src="${product.image}" alt="${product.title}" class="product-img" />
+        <div style="position: relative; width: 100%;">
+          <img src="${product.image}" alt="${product.title}" class="product-img" />
+        <div class="product-price-overlay">${product.price}</div>
+        </div>
         <div class="product-details">
           <div class="product-title">${truncateText(product.title, 60)}</div>
           ${product.author ? `<div class="product-author">by ${product.author}</div>` : ''}
-          <div class="product-price">${product.price}</div>
           ${product.discount ? `<div class="discount">${product.discount}</div>` : ''}
           <div><a class="buy-now" href="${product.url}" target="_blank">View Book</a></div>
         </div>
