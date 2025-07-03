@@ -84,13 +84,13 @@ module.exports = async (req, res) => {
         vendor: normalize(product.vendor),
         productType: normalize(product.productType),
         description: normalize(product.description),
-        tags: product.tags.map(normalize).join(' ')
+        tags: (product.tags || []).map(normalize).join(' ')
       };
 
       // Collect and normalize metafields
       const metafieldMap = {};
       for (const m of product.metafields || []) {
-        if (m.key && m.value) {
+        if (m?.key && m?.value) {
           metafieldMap[m.key] = normalize(m.value);
         }
       }
@@ -99,7 +99,8 @@ module.exports = async (req, res) => {
       let score = 0;
 
       for (const field in fields) {
-        if (fields[field].includes(normQuery)) {
+        const value = fields[field];
+        if (typeof value === 'string' && value.includes(normQuery)) {
           if (field === 'title') score += 100;
           else if (field === 'vendor') score += 50;
           else if (field === 'tags') score += 40;
@@ -120,7 +121,7 @@ module.exports = async (req, res) => {
       }
 
       // Bonus for fuzzy match
-      if (fields.title.startsWith(fuzzy) || (metafieldMap['author01'] || '').startsWith(fuzzy)) {
+      if ((fields.title || '').startsWith(fuzzy) || (metafieldMap['author01'] || '').startsWith(fuzzy)) {
         score += 15;
       }
 
@@ -137,7 +138,7 @@ module.exports = async (req, res) => {
           title: product.title,
           author: metafieldMap['author01'] || '',
           price: `₹${price}`,
-          image: product.images.edges[0]?.node.url || '',
+          image: product.images?.edges?.[0]?.node?.url || '',
           url: `https://www.bookstaa.com/products/${product.handle}`,
           discount: discount > 0 ? `${discount}% OFF` : '',
           score
