@@ -34,14 +34,14 @@ module.exports = async (req, res) => {
       }
     });
 
-    // 📦 Fetch full product list from Google Drive
+    // 📦 Fetch full product list from JSON (Google Drive)
     const jsonRes = await fetch(BOOKSTAA_JSON_URL);
     const products = await jsonRes.json();
 
     const results = [];
 
     for (const product of products) {
-      // Normalize core fields including handle
+      // 🧱 Normalize core fields including handle
       const fields = {
         title: normalize(product.title),
         vendor: normalize(product.vendor),
@@ -60,38 +60,48 @@ module.exports = async (req, res) => {
         author_location: normalize(metafields['author_location'] || '')
       };
 
-      // 🎯 Smart weighted scoring with token OR synonym matching
+      // 🎯 Step 2: Smart Weighted Scoring
       let score = 0;
+      let matchedTokens = new Set();
 
+      // 🎯 Match query tokens to main fields
       for (const field in fields) {
         const value = fields[field];
-        const anyMatch = expandedTokens.some(token => value.includes(token));
-        if (anyMatch) {
-          if (field === 'title') score += 100;
-          else if (field === 'handle') score += 100;
-          else if (field === 'vendor') score += 50;
-          else if (field === 'tags') score += 40;
-          else if (field === 'description') score += 20;
-          else score += 10;
+        for (const token of expandedTokens) {
+          if (value.includes(token)) {
+            matchedTokens.add(token);
+            if (field === 'title') score += 100;
+            else if (field === 'handle') score += 100; // highest priority
+            else if (field === 'vendor') score += 50;
+            else if (field === 'tags') score += 40;
+            else if (field === 'description') score += 20;
+            else score += 10;
+          }
         }
       }
 
+      // 🎯 Match tokens to metafields
       for (const [key, value] of Object.entries(metafieldMap)) {
-        const anyMatch = expandedTokens.some(token => value.includes(token));
-        if (anyMatch) {
-          if (key === 'author01') score += 80;
-          else if (key === 'readers_category') score += 70;
-          else if (key === 'isbn') score += 65;
-          else if (key === 'author_location') score += 60;
-          else if (key === 'language') score += 50;
-          else score += 30;
+        for (const token of expandedTokens) {
+          if (value.includes(token)) {
+            matchedTokens.add(token);
+            if (key === 'author01') score += 80;
+            else if (key === 'readers_category') score += 70;
+            else if (key === 'isbn') score += 65;
+            else if (key === 'author_location') score += 60;
+            else if (key === 'language') score += 50;
+            else score += 30;
+          }
         }
       }
 
-      // 🔍 Fuzzy match bonus
+      // 🔍 Step 3: Fuzzy Bonus
       if ((fields.title || '').startsWith(fuzzy) || (metafieldMap['author01'] || '').startsWith(fuzzy)) {
         score += 15;
       }
+
+      // 🧠 Bonus: Total matched tokens = more relevant product
+      score += matchedTokens.size * 12;
 
       if (score > 0) {
         const price = parseFloat(product.price || '0');
@@ -110,7 +120,7 @@ module.exports = async (req, res) => {
       }
     }
 
-    // Sort results by score
+    // 🧹 Final Sort by Score
     results.sort((a, b) => b.score - a.score);
 
     if (results.length === 0) {
@@ -120,7 +130,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // ✅ Return top 10 results
+    // ✅ Return top 10
     return res.status(200).json({ products: results.slice(0, 10) });
 
   } catch (err) {
