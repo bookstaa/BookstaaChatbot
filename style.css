@@ -1,10 +1,98 @@
+/* --- START: Base Layout --- */
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #f4f7fb;
+  margin: 0;
+  padding: 0;
+}
+.chat-container {
+  width: 100%;
+  max-width: 600px;
+  margin: 60px auto 20px;
+  border: 1px solid #ddd;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+.chat-box {
+  height: 400px;
+  overflow-y: auto;
+  padding: 12px;
+  scroll-behavior: smooth;
+}
+.input-container {
+  display: flex;
+  border-top: 1px solid #ddd;
+}
+#user-input {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  font-size: 16px;
+}
+button {
+  padding: 12px 22px;
+  background: #000;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+/* --- END: Base Layout --- */
+
+/* --- START: Chat Bubbles --- */
+.user, .assistant, .chat {
+  margin: 10px 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  max-width: 85%;
+  line-height: 1.6;
+  word-wrap: break-word;
+  font-size: 15px;
+}
+.user {
+  background-color: #e6f3ff;
+  align-self: flex-end;
+  margin-left: auto;
+  text-align: right;
+}
+.assistant {
+  background-color: #f2f2f2;
+  border-left: 4px solid #0070f3;
+}
+.branding {
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+  margin-top: 14px;
+  padding-bottom: 20px;
+}
+/* --- END: Chat Bubbles --- */
+
+/* --- START: Product Slider --- */
+.product-slider {
+  display: flex;
+  overflow-x: auto;
+  gap: 12px;
+  padding: 10px 0;
+  scroll-snap-type: x mandatory;
+}
+.product-slider::-webkit-scrollbar {
+  height: 6px;
+}
+.product-slider::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 3px;
+}
+/* --- END: Product Slider --- */
+
 /* --- START: Product Card --- */
 .product-card {
-  min-width: 160px; /* ⬅ slightly smaller */
-  max-width: 180px;
+  min-width: 160px;
+  max-width: 200px;
   background: #fff;
   border-radius: 12px;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   padding: 10px;
   scroll-snap-align: start;
   display: flex;
@@ -13,17 +101,17 @@
   transition: transform 0.2s ease;
 }
 .product-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-3px);
 }
 .product-img {
   width: 100%;
-  height: 140px;
+  height: 150px;
   object-fit: cover;
   border-radius: 8px;
 }
 .product-details {
   text-align: center;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 .product-title {
   font-weight: 600;
@@ -34,21 +122,21 @@
   overflow: hidden;
 }
 .product-author {
-  font-size: 14px; /* 🔼 Increased */
-  font-weight: 500; /* 🔼 Bolder */
-  color: #333;
+  font-size: 14px;
+  font-weight: 500;
+  color: #222;
   margin-bottom: 6px;
 }
 .product-price {
-  font-size: 15px;
+  font-size: 14px;
   color: #000;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 .discount {
   font-size: 13px;
-  color: #d90000;
   font-weight: bold;
   margin-bottom: 6px;
+  color: #d90000;
 }
 .buy-now {
   display: inline-block;
@@ -65,40 +153,108 @@
 }
 /* --- END: Product Card --- */
 
-/* 🧩 Single Product Container Consistency */
-.product-slider.single-card {
-  justify-content: center;
+/* 🔘 Suggested Prompt Buttons */
+.suggested-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  background: #f7f9fc;
+  border-top: 1px solid #ddd;
+  border-bottom: 1px solid #ddd;
+}
+.suggested-prompts button {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.suggested-prompts button:hover {
+  background: #eef6ff;
+  border-color: #0070f3;
+}
+
+/* ⏳ Typing Indicator */
+.typing-dots span {
+  animation: blink 1.2s infinite;
+  font-size: 24px;
+  color: #888;
+  margin-right: 2px;
+}
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes blink {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
 }
 
 /* 📱 Responsive Tweaks */
 @media (max-width: 480px) {
+  .chat-container {
+    border-radius: 0;
+    margin: 0;
+  }
   .product-card {
-    min-width: 130px;
-    max-width: 160px;
-    padding: 8px;
+    min-width: 140px;
   }
   .product-title {
-    font-size: 13px;
-  }
-  .product-author {
     font-size: 13px;
   }
   .buy-now {
     font-size: 12px;
     padding: 5px 10px;
   }
-  .discount {
-    font-size: 12px;
-  }
 }
 
-/* 💛 Bookstaa Branding Footer (Refined) */
+/* 🌙 Dark Mode (future toggle) */
+body.dark-mode {
+  background: #1e1e1e;
+  color: #f4f4f4;
+}
+body.dark-mode .chat-container {
+  background: #2b2b2b;
+  border-color: #444;
+}
+body.dark-mode .user {
+  background: #0f4c75;
+  color: #fff;
+}
+body.dark-mode .assistant {
+  background: #333;
+  border-left-color: #0070f3;
+}
+body.dark-mode .product-card {
+  background: #444;
+  color: #fff;
+}
+body.dark-mode .buy-now {
+  background: #1fa35c;
+}
+
+/* 📝 Feedback Suggestion Box */
+.feedback-suggestion {
+  font-size: 13px;
+  background: #fffbe6;
+  color: #946300;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin: 14px 0;
+  border: 1px dashed #ffcd4d;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* 💛 Bookstaa Branding Footer */
 .branding::after {
-  content: "🔮 Powered by ChatGPT • Bookstaa.com";
+  content: "Powered by ChatGPT • Bookstaa.com 📚";
   display: block;
   margin-top: 6px;
   font-size: 11px;
   color: #aaa;
-  font-style: italic;
-  letter-spacing: 0.2px;
 }
