@@ -34,14 +34,15 @@ module.exports = async (req, res) => {
       }
     });
 
-    // 📦 Fetch full product list from JSON (Google Drive)
+    // 📦 Fetch full product list
     const jsonRes = await fetch(BOOKSTAA_JSON_URL);
     const products = await jsonRes.json();
 
     const results = [];
 
+    // 🔍 Step 2: Scoring Loop
     for (const product of products) {
-      // 🧱 Normalize core fields including handle
+      // 🧱 Normalize all fields
       const fields = {
         title: normalize(product.title),
         vendor: normalize(product.vendor),
@@ -60,18 +61,17 @@ module.exports = async (req, res) => {
         author_location: normalize(metafields['author_location'] || '')
       };
 
-      // 🎯 Step 2: Smart Weighted Scoring
+      // 🎯 Smart Weighted Scoring
       let score = 0;
       let matchedTokens = new Set();
 
-      // 🎯 Match query tokens to main fields
       for (const field in fields) {
         const value = fields[field];
         for (const token of expandedTokens) {
           if (value.includes(token)) {
             matchedTokens.add(token);
             if (field === 'title') score += 100;
-            else if (field === 'handle') score += 100; // highest priority
+            else if (field === 'handle') score += 100;
             else if (field === 'vendor') score += 50;
             else if (field === 'tags') score += 40;
             else if (field === 'description') score += 20;
@@ -80,7 +80,6 @@ module.exports = async (req, res) => {
         }
       }
 
-      // 🎯 Match tokens to metafields
       for (const [key, value] of Object.entries(metafieldMap)) {
         for (const token of expandedTokens) {
           if (value.includes(token)) {
@@ -100,7 +99,7 @@ module.exports = async (req, res) => {
         score += 15;
       }
 
-            // 🧠 Bonus: Total matched tokens = more relevant product
+      // 🧠 Bonus: Total matched tokens = more relevant product
       score += matchedTokens.size * 12;
 
       if (score > 0) {
@@ -108,18 +107,9 @@ module.exports = async (req, res) => {
         const compare = parseFloat(product.compareAtPrice || '0');
         const discount = compare > price ? Math.round(((compare - price) / compare) * 100) : 0;
 
-        // ✨ Format author with Title Case
-        const formatAuthor = (name) =>
-          name
-            ?.split(' ')
-            .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-            .join(' ')
-            .trim();
-
-        // ✅ Push final result
         results.push({
           title: product.title,
-          author: formatAuthor(metafieldMap['author01'] || ''),
+          author: metafieldMap['author01'] || '',
           price: `₹${price}`,
           image: product.image || '',
           url: `https://www.bookstaa.com/products/${product.handle}`,
@@ -127,7 +117,7 @@ module.exports = async (req, res) => {
           score
         });
       }
-
+    } // ← ✅ Missing closing brace added here for the `for` loop
 
     // 🧹 Final Sort by Score
     results.sort((a, b) => b.score - a.score);
@@ -139,7 +129,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // ✅ Return top 10
+    // ✅ Return Top Results
     return res.status(200).json({ products: results.slice(0, 10) });
 
   } catch (err) {
