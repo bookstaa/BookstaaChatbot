@@ -122,11 +122,12 @@ button {
   overflow: hidden;
 }
 .product-author {
-  font-size: 14px;
-  font-weight: 500;
-  color: #222;
+  font-size: 13px;
+  color: #444;
   margin-bottom: 6px;
+  text-transform: capitalize; /* ✅ Added */
 }
+
 .product-price {
   font-size: 14px;
   color: #000;
