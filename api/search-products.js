@@ -1,11 +1,8 @@
 // 📦 Imports & Config
 const fetch = require('node-fetch');
-
-const SHOPIFY_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
-const SHOPIFY_STOREFRONT_API_TOKEN = process.env.SHOPIFY_STOREFRONT_API_TOKEN;
-const gql = String.raw;
-
 const normalize = (str) => str?.toLowerCase().replace(/[^a-z0-9\s]/gi, '').trim() || '';
+
+const BOOKSTAA_JSON_URL = process.env.BOOKSTAA_JSON_URL;
 
 module.exports = async (req, res) => {
   try {
@@ -18,67 +15,14 @@ module.exports = async (req, res) => {
     const fuzzy = normQuery.slice(0, 5);
     const isISBN = /^\d{10,13}$/.test(query.trim());
 
-    // 📦 Fetch products
-    const shopifyRes = await fetch(`https://${SHOPIFY_DOMAIN}/api/2024-04/graphql.json`, {
-      method: 'POST',
-      headers: {
-        'X-Shopify-Storefront-Access-Token': SHOPIFY_STOREFRONT_API_TOKEN,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: gql`
-          {
-            products(first: 100) {
-              edges {
-                node {
-                  id
-                  title
-                  handle
-                  vendor
-                  productType
-                  description
-                  tags
-                  images(first: 1) {
-                    edges { node { url } }
-                  }
-                  variants(first: 10) {
-                    edges {
-                      node {
-                        title
-                        price { amount }
-                        compareAtPrice { amount }
-                      }
-                    }
-                  }
-                  metafields(identifiers: [
-                    { namespace: "Books", key: "author01" },
-                    { namespace: "Books", key: "Book-ISBN" },
-                    { namespace: "Books", key: "language" },
-                    { namespace: "books", key: "readers_category" },
-                    { namespace: "Books", key: "author_location" }
-                  ]) {
-                    key
-                    value
-                  }
-                }
-              }
-            }
-          }
-        `,
-      }),
-    });
+    // 📦 Fetch full product list from Google Drive
+    const jsonRes = await fetch(BOOKSTAA_JSON_URL);
+    const products = await jsonRes.json();
 
-    const json = await shopifyRes.json();
-    if (!json?.data?.products) {
-      console.error('⚠️ Shopify API returned invalid data:', json);
-      return res.status(500).json({ error: 'Shopify API error', details: json });
-    }
-
-    const products = json.data.products.edges.map(edge => edge.node);
     const results = [];
 
     for (const product of products) {
-      // Normalize all main fields
+      // Normalize core fields
       const fields = {
         title: normalize(product.title),
         vendor: normalize(product.vendor),
@@ -87,15 +31,16 @@ module.exports = async (req, res) => {
         tags: (product.tags || []).map(normalize).join(' ')
       };
 
-      // Collect and normalize metafields
-      const metafieldMap = {};
-      for (const m of product.metafields || []) {
-        if (m?.key && m?.value) {
-          metafieldMap[m.key] = normalize(m.value);
-        }
-      }
+      const metafields = product.metafields || {};
+      const metafieldMap = {
+        author01: normalize(metafields['author01'] || ''),
+        isbn: normalize(metafields['Book-ISBN'] || ''),
+        language: normalize(metafields['language'] || ''),
+        readers_category: normalize(metafields['readers_category'] || ''),
+        author_location: normalize(metafields['author_location'] || '')
+      };
 
-      // 🎯 Smart weighted scoring
+      // 🎯 Weighted scoring
       let score = 0;
 
       for (const field in fields) {
@@ -113,32 +58,28 @@ module.exports = async (req, res) => {
         if (value.includes(normQuery)) {
           if (key === 'author01') score += 80;
           else if (key === 'readers_category') score += 70;
-          else if (key === 'Book-ISBN') score += 65;
+          else if (key === 'isbn') score += 65;
           else if (key === 'author_location') score += 60;
           else if (key === 'language') score += 50;
           else score += 30;
         }
       }
 
-      // Bonus for fuzzy match
+      // 🔍 Fuzzy bonus
       if ((fields.title || '').startsWith(fuzzy) || (metafieldMap['author01'] || '').startsWith(fuzzy)) {
         score += 15;
       }
 
       if (score > 0) {
-        const variant = product.variants.edges.find(v =>
-          normalize(v.node.title).includes('paperback')
-        )?.node || product.variants.edges[0]?.node;
-
-        const price = parseFloat(variant?.price?.amount || '0');
-        const compare = parseFloat(variant?.compareAtPrice?.amount || '0');
+        const price = parseFloat(product.price || '0');
+        const compare = parseFloat(product.compareAtPrice || '0');
         const discount = compare > price ? Math.round(((compare - price) / compare) * 100) : 0;
 
         results.push({
           title: product.title,
           author: metafieldMap['author01'] || '',
           price: `₹${price}`,
-          image: product.images?.edges?.[0]?.node?.url || '',
+          image: product.image || '',
           url: `https://www.bookstaa.com/products/${product.handle}`,
           discount: discount > 0 ? `${discount}% OFF` : '',
           score
@@ -146,7 +87,7 @@ module.exports = async (req, res) => {
       }
     }
 
-    // Sort & Respond
+    // Sort results by score
     results.sort((a, b) => b.score - a.score);
 
     if (results.length === 0) {
@@ -156,7 +97,8 @@ module.exports = async (req, res) => {
       });
     }
 
-    return res.status(200).json({ products: results.slice(0, 6) }); // Return top 6
+    // ✅ Return top 10 results
+    return res.status(200).json({ products: results.slice(0, 10) });
 
   } catch (err) {
     console.error('❌ search-products fatal error:', err);
