@@ -13,27 +13,19 @@ const isGreeting = (input) => {
   return greetings.some(g => norm.includes(g));
 };
 
-// 📦 Section 2: Hinglish Normalizer (basic map)
+// 📦 Section 2: Hinglish Normalizer
 const normalizeHinglish = (str) => {
   const map = {
-    'pustak': 'book',
-    'kitabein': 'books',
-    'jyotish': 'astrology',
-    'vigyan': 'science',
-    'veda': 'vedas',
-    'sangeet': 'music',
-    'bhasha': 'language',
-    'prem': 'love',
-    'gyan': 'knowledge',
-    'adhyatma': 'spiritual',
-    'dharm': 'religion'
+    'pustak': 'book', 'kitabein': 'books', 'jyotish': 'astrology',
+    'vigyan': 'science', 'veda': 'vedas', 'sangeet': 'music',
+    'bhasha': 'language', 'prem': 'love', 'gyan': 'knowledge',
+    'adhyatma': 'spiritual', 'dharm': 'religion'
   };
-  const norm = str.toLowerCase();
-  let replaced = norm;
+  let norm = str.toLowerCase();
   for (const [k, v] of Object.entries(map)) {
-    replaced = replaced.replace(new RegExp(`\\b${k}\\b`, 'gi'), v);
+    norm = norm.replace(new RegExp(`\\b${k}\\b`, 'gi'), v);
   }
-  return replaced;
+  return norm;
 };
 
 module.exports = async (req, res) => {
@@ -74,7 +66,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ type: 'text', text: reply });
     }
 
-    // 📦 Section 4: Search Products via Shopify API
+    // 📦 Section 4: Product Search via API
     const searchRes = await fetch(`${baseURL}/api/search-products`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -83,7 +75,13 @@ module.exports = async (req, res) => {
 
     const searchData = await searchRes.json();
 
+    // ✅ Products Found
     if (searchData.products?.length > 0) {
+      const limitedProducts = searchData.products.slice(0, 5);
+      const productList = limitedProducts
+        .map(p => `${p.title}${p.author ? ` by ${p.author}` : ''}`)
+        .join(', ');
+
       const gptReplyRes = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -95,7 +93,7 @@ module.exports = async (req, res) => {
           messages: [
             {
               role: 'system',
-              content: 'You are Bookstaa Chatbot. Respond short, polite, and helpful. Suggest books relevant to query and available in Bookstaa inventory only.',
+              content: `You are Bookstaa Chatbot. These are the books we found: ${productList}. Suggest them politely. Do NOT suggest anything outside this list.`,
             },
             { role: 'user', content: message },
           ],
@@ -104,7 +102,7 @@ module.exports = async (req, res) => {
       });
 
       const gptReplyData = await gptReplyRes.json();
-      const reply = gptReplyData?.choices?.[0]?.message?.content?.trim() || '';
+      const reply = gptReplyData?.choices?.[0]?.message?.content?.trim() || `📚 Here's what we found for your search!`;
 
       return res.status(200).json({
         type: 'products',
@@ -113,7 +111,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // 📦 Section 5: GPT Fallback (if no results from Bookstaa inventory)
+    // 📦 Section 5: GPT Fallback (no products found)
     const fallbackRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -125,11 +123,7 @@ module.exports = async (req, res) => {
         messages: [
           {
             role: 'system',
-            content: `You are Bookstaa Chatbot. When no product is found, respond with:
-- Polite tone
-- Do not recommend books not sold on Bookstaa
-- Encourage retry with better keywords
-- Mention example genres: astrology, yoga, Hindi literature`,
+            content: `You are Bookstaa Chatbot. No products were found. Respond politely. Don't mention other stores. Encourage retry with better keywords like title, author, or categories like astrology, yoga, Hindi literature.`,
           },
           { role: 'user', content: message },
         ],
@@ -140,7 +134,7 @@ module.exports = async (req, res) => {
     const fallbackData = await fallbackRes.json();
     let fallbackReply = fallbackData?.choices?.[0]?.message?.content?.trim() || '';
 
-    // 📦 Section 6: GPT Keyword Retry Extraction
+    // 📦 Section 6: Extract Keywords to Retry
     const keywordRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -152,7 +146,7 @@ module.exports = async (req, res) => {
         messages: [
           {
             role: 'system',
-            content: 'Extract 1-2 keywords for a book query from user input. Return as comma-separated string like: vedas, astrology',
+            content: 'Extract 1-2 keywords for a book query from user input. Return as: astrology, hindi',
           },
           { role: 'user', content: message },
         ],
@@ -188,7 +182,7 @@ module.exports = async (req, res) => {
 Try searching by:
 • Book **title** (e.g. "Bhagavad Gita")
 • **Author name** (e.g. "Devdutt Pattanaik")
-• **ISBN** or category like *astrology*
+• **ISBN** or categories like *astrology*, *yoga*, *Hindi literature*
 
 📩 Still need help? Email [feedback@bookstaa.com](mailto:feedback@bookstaa.com) ✉️`;
     }
