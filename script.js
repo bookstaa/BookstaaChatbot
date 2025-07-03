@@ -59,7 +59,7 @@ Try:
     }
 
   } catch (err) {
-    console.error('Chat error:', err);
+    console.error('⚠️ Chat error:', err);
     showTypingIndicator(false);
     showAssistantMessage('⚠️ Something went wrong. Please try again.');
   }
@@ -83,6 +83,12 @@ function showAssistantMessage(text) {
   msg.innerHTML = marked.parse(text); // Markdown support
   chatBox.appendChild(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
+
+  // 🏷️ Add branded footer
+  const branding = document.createElement('div');
+  branding.className = 'branding';
+  branding.innerHTML = '🔮 Powered by ChatGPT • Bookstaa.com';
+  chatBox.appendChild(branding);
 }
 
 // 🕐 Section 7: Typing Dots
@@ -101,8 +107,9 @@ function showTypingIndicator(show) {
   }
 }
 
-function renderProductCards(products) {
-  const chatBox = document.querySelector('.chat-box');
+// 🛍️ Section 8: Show Product Cards
+function showProductSlider(products) {
+  const chatBox = document.getElementById('chat-box');
 
   const container = document.createElement('div');
   container.className = 'product-slider';
@@ -113,12 +120,13 @@ function renderProductCards(products) {
 
     card.innerHTML = `
       <a href="${product.url}" target="_blank" rel="noopener noreferrer">
-        <img src="${product.image}" alt="${product.title}" class="product-image" />
-        <div class="product-info">
-          <h4 class="product-title">${product.title}</h4>
-          <p class="product-author">${product.author ? `by ${product.author}` : ''}</p>
-          <p class="product-price">${product.price}</p>
-          ${product.discount ? `<p class="product-discount">${product.discount}</p>` : ''}
+        <img src="${product.image}" alt="${product.title}" class="product-img" />
+        <div class="product-details">
+          <div class="product-title">${truncateText(product.title, 60)}</div>
+          ${product.author ? `<div class="product-author">by ${product.author}</div>` : ''}
+          <div class="product-price">${product.price}</div>
+          ${product.discount ? `<div class="discount">${product.discount}</div>` : ''}
+          <div><a class="buy-now" href="${product.url}" target="_blank">View Book</a></div>
         </div>
       </a>
     `;
