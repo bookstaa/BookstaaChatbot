@@ -11,7 +11,6 @@ const isGreeting = (input) => {
   return greetings.includes(norm);
 };
 
-
 // 📦 Section 2: Hinglish Normalizer
 const normalizeHinglish = (str) => {
   const map = {
@@ -77,31 +76,8 @@ module.exports = async (req, res) => {
     // ✅ Products Found
     if (searchData.products?.length > 0) {
       const limitedProducts = searchData.products.slice(0, 5);
-      const productList = limitedProducts
-        .map(p => `${p.title}${p.author ? ` by ${p.author}` : ''}`)
-        .join(', ');
-
-      const gptReplyRes = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            {
-              role: 'system',
-              content: `You are Bookstaa Chatbot. These are the books we found: ${productList}. Suggest them politely. Do NOT suggest anything outside this list.`,
-            },
-            { role: 'user', content: message },
-          ],
-          temperature: 0.6,
-        }),
-      });
-
-      const gptReplyData = await gptReplyRes.json();
-      const reply = gptReplyData?.choices?.[0]?.message?.content?.trim() || `📚 Here's what we found for your search!`;
+      const productList = limitedProducts.map(p => `*${p.title}*`).join(', ');
+      const reply = `📚 I found the following books that match your query: ${productList}. Let me know if you'd like more info on any of them!`;
 
       return res.status(200).json({
         type: 'products',
@@ -166,9 +142,10 @@ module.exports = async (req, res) => {
 
       const secondData = await secondRes.json();
       if (secondData.products?.length > 0) {
+        const retryReply = `🔍 Based on your interest in "${keyword}", here are some books you might like:`;
         return res.status(200).json({
           type: 'products',
-          text: fallbackReply,
+          text: retryReply,
           products: secondData.products,
         });
       }
