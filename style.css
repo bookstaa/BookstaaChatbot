@@ -112,6 +112,18 @@ button {
   position: relative;
 }
 
+.product-price-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  z-index: 2;
+}
+
 .product-details {
   text-align: center;
   margin-top: 8px;
