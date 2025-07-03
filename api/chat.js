@@ -2,7 +2,7 @@
 const fetch = require('node-fetch');
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-// 📦 Section 1: Greeting Keywords Logic
+// 📦 Section 1: Greeting Detection
 const isGreeting = (input) => {
   const greetings = [
     'hello', 'hi', 'namaste', 'how are you', 'how can you help',
@@ -10,21 +10,43 @@ const isGreeting = (input) => {
     'kaise ho', 'tum kaun ho', 'can you help', 'what is this', 'bookstaa'
   ];
   const norm = input.toLowerCase().replace(/[^a-z0-9\s]/gi, '').trim();
-  return greetings.some(greet => norm.includes(greet));
+  return greetings.some(g => norm.includes(g));
+};
+
+// 📦 Section 2: Hinglish Normalizer (basic map)
+const normalizeHinglish = (str) => {
+  const map = {
+    'pustak': 'book',
+    'kitabein': 'books',
+    'jyotish': 'astrology',
+    'vigyan': 'science',
+    'veda': 'vedas',
+    'sangeet': 'music',
+    'bhasha': 'language',
+    'prem': 'love',
+    'gyan': 'knowledge',
+    'adhyatma': 'spiritual',
+    'dharm': 'religion'
+  };
+  const norm = str.toLowerCase();
+  let replaced = norm;
+  for (const [k, v] of Object.entries(map)) {
+    replaced = replaced.replace(new RegExp(`\\b${k}\\b`, 'gi'), v);
+  }
+  return replaced;
 };
 
 module.exports = async (req, res) => {
   try {
-    // 📦 Section 2: Basic Validations & Setup
     const { message } = req.body;
     if (!message || message.length < 1) {
       return res.status(400).json({ error: 'Empty message' });
     }
 
     const baseURL = req.headers.origin || 'https://bookstaa.com';
-    const normMsg = message.toLowerCase().trim();
+    const normMsg = normalizeHinglish(message.toLowerCase().trim());
 
-    // 📦 Section 3: Handle Greeting Messages
+    // 📦 Section 3: Handle Greeting
     if (isGreeting(normMsg)) {
       const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -38,7 +60,7 @@ module.exports = async (req, res) => {
             {
               role: 'system',
               content:
-                'You are Bookstaa Chatbot — a helpful, loyal assistant for an Indian bookstore. You help users discover books and answer general queries. You never recommend other websites. Always encourage the user to search by book title, author, or ISBN.',
+                'You are Bookstaa Chatbot — a friendly assistant for an Indian online bookstore. Greet warmly, suggest user to search by book title, author, ISBN, or category like astrology or yoga. Do not recommend books outside Bookstaa.',
             },
             { role: 'user', content: message },
           ],
@@ -47,22 +69,21 @@ module.exports = async (req, res) => {
       });
 
       const gptData = await gptRes.json();
-      const reply = gptData?.choices?.[0]?.message?.content?.trim() || `Hi there 👋 I’m your Bookstaa assistant! You can ask me about books by title, author, ISBN, or even in Hinglish.`;
+      const reply = gptData?.choices?.[0]?.message?.content?.trim() || `Hi there 👋 Welcome to Bookstaa! You can search by book title, author, or category like *yoga*, *astrology*, or *Hindi literature*.`;
 
       return res.status(200).json({ type: 'text', text: reply });
     }
 
-    // 📦 Section 4: Search Products Using Shopify
+    // 📦 Section 4: Search Products via Shopify API
     const searchRes = await fetch(`${baseURL}/api/search-products`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: message }),
+      body: JSON.stringify({ query: normMsg }),
     });
 
     const searchData = await searchRes.json();
 
     if (searchData.products?.length > 0) {
-      // 📦 Section 5: GPT Intro (with Products Found)
       const gptReplyRes = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -74,7 +95,7 @@ module.exports = async (req, res) => {
           messages: [
             {
               role: 'system',
-              content: 'You are Bookstaa Chatbot — assist users in a concise, reader-friendly tone. Suggest books if found. Keep it short and related to query.',
+              content: 'You are Bookstaa Chatbot. Respond short, polite, and helpful. Suggest books relevant to query and available in Bookstaa inventory only.',
             },
             { role: 'user', content: message },
           ],
@@ -92,7 +113,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // 📦 Section 6: GPT Fallback Response (no products found)
+    // 📦 Section 5: GPT Fallback (if no results from Bookstaa inventory)
     const fallbackRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -104,7 +125,11 @@ module.exports = async (req, res) => {
         messages: [
           {
             role: 'system',
-            content: 'You are Bookstaa Chatbot. Suggest useful book-related replies when no result found. Recommend categories like astrology, yoga, or Hindi literature.',
+            content: `You are Bookstaa Chatbot. When no product is found, respond with:
+- Polite tone
+- Do not recommend books not sold on Bookstaa
+- Encourage retry with better keywords
+- Mention example genres: astrology, yoga, Hindi literature`,
           },
           { role: 'user', content: message },
         ],
@@ -115,7 +140,7 @@ module.exports = async (req, res) => {
     const fallbackData = await fallbackRes.json();
     let fallbackReply = fallbackData?.choices?.[0]?.message?.content?.trim() || '';
 
-    // 📦 Section 7: GPT Keyword Extraction for Retry
+    // 📦 Section 6: GPT Keyword Retry Extraction
     const keywordRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -127,7 +152,7 @@ module.exports = async (req, res) => {
         messages: [
           {
             role: 'system',
-            content: 'Extract 1-3 keywords from user query for a book search. Return in comma format like: yoga, hindi',
+            content: 'Extract 1-2 keywords for a book query from user input. Return as comma-separated string like: vedas, astrology',
           },
           { role: 'user', content: message },
         ],
@@ -136,7 +161,7 @@ module.exports = async (req, res) => {
     });
 
     const keywordData = await keywordRes.json();
-    const keywordStr = keywordData.choices?.[0]?.message?.content || '';
+    const keywordStr = keywordData?.choices?.[0]?.message?.content || '';
     const keyword = keywordStr.replace(/[^a-zA-Z0-9, ]/g, '').split(',')[0]?.trim();
 
     if (keyword && keyword.length > 2) {
@@ -156,7 +181,7 @@ module.exports = async (req, res) => {
       }
     }
 
-    // 📦 Section 8: Final fallback if nothing matches
+    // 📦 Section 7: Final Fallback
     if (!fallbackReply) {
       fallbackReply = `❓ I couldn’t find anything for **${message}**.
 
@@ -171,7 +196,6 @@ Try searching by:
     return res.status(200).json({ type: 'text', text: fallbackReply });
 
   } catch (err) {
-    // 📦 Section 9: Catch Unexpected Errors
     console.error('💥 /api/chat error:', err);
     return res.status(500).json({ error: 'Chat failed', details: err.message });
   }
