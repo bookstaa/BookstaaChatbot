@@ -13,7 +13,7 @@ module.exports = async (req, res) => {
 
     const normQuery = normalize(query);
     const fuzzy = normQuery.slice(0, 5);
-    const isISBN = /^\d{10,13}$/.test(query.trim());
+    const queryTokens = normQuery.split(' ').filter(Boolean);
 
     // 📦 Fetch full product list from Google Drive
     const jsonRes = await fetch(BOOKSTAA_JSON_URL);
@@ -22,31 +22,34 @@ module.exports = async (req, res) => {
     const results = [];
 
     for (const product of products) {
-      // Normalize core fields
+      // Normalize core fields including handle
       const fields = {
         title: normalize(product.title),
         vendor: normalize(product.vendor),
         productType: normalize(product.productType),
         description: normalize(product.description),
-        tags: (product.tags || []).map(normalize).join(' ')
+        tags: (product.tags || []).map(normalize).join(' '),
+        handle: normalize(product.handle?.replace(/-/g, ' ')) || ''
       };
 
-      const metafields = product.metafields || {};
+      const metafields = product.metafields?.books || {};
       const metafieldMap = {
         author01: normalize(metafields['author01'] || ''),
-        isbn: normalize(metafields['Book-ISBN'] || ''),
+        isbn: normalize(metafields['book_isbn'] || ''),
         language: normalize(metafields['language'] || ''),
         readers_category: normalize(metafields['readers_category'] || ''),
         author_location: normalize(metafields['author_location'] || '')
       };
 
-      // 🎯 Weighted scoring
+      // 🎯 Smart weighted scoring with token matching
       let score = 0;
 
       for (const field in fields) {
         const value = fields[field];
-        if (typeof value === 'string' && value.includes(normQuery)) {
+        const allMatch = queryTokens.every(token => value.includes(token));
+        if (allMatch) {
           if (field === 'title') score += 100;
+          else if (field === 'handle') score += 100;
           else if (field === 'vendor') score += 50;
           else if (field === 'tags') score += 40;
           else if (field === 'description') score += 20;
@@ -55,7 +58,8 @@ module.exports = async (req, res) => {
       }
 
       for (const [key, value] of Object.entries(metafieldMap)) {
-        if (value.includes(normQuery)) {
+        const allMatch = queryTokens.every(token => value.includes(token));
+        if (allMatch) {
           if (key === 'author01') score += 80;
           else if (key === 'readers_category') score += 70;
           else if (key === 'isbn') score += 65;
