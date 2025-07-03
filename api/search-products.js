@@ -102,22 +102,23 @@ module.exports = async (req, res) => {
       // 🧠 Bonus: Total matched tokens = more relevant product
       score += matchedTokens.size * 12;
 
-      if (score > 0) {
-        const price = parseFloat(product.price || '0');
-        const compare = parseFloat(product.compareAtPrice || '0');
-        const discount = compare > price ? Math.round(((compare - price) / compare) * 100) : 0;
+      // 🏷️ Extract pricing and discount
+      const price = parseFloat(product.price || '0');
+      const compare = parseFloat(product.compareAtPrice || '0');
+      const discount = compare > price ? `${Math.round(((compare - price) / compare) * 100)}% OFF` : '';
 
+      if (score > 0) {
         results.push({
           title: product.title,
           author: metafieldMap['author01'] || '',
           price: `₹${price}`,
+          discount,
           image: product.image || '',
           url: `https://www.bookstaa.com/products/${product.handle}`,
-          discount: discount > 0 ? `${discount}% OFF` : '',
           score
         });
       }
-    } // ← ✅ Missing closing brace added here for the `for` loop
+    }
 
     // 🧹 Final Sort by Score
     results.sort((a, b) => b.score - a.score);
