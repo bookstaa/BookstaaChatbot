@@ -101,39 +101,32 @@ function showTypingIndicator(show) {
   }
 }
 
-// 🛍️ Section 8: Product Card Renderer
-function showProductSlider(products) {
-  const chatBox = document.getElementById('chat-box');
+function renderProductCards(products) {
+  const chatBox = document.querySelector('.chat-box');
 
-  // ❌ REMOVE THIS to keep old product cards
-  // chatBox.querySelectorAll('.product-slider').forEach(el => el.remove());
-
-  const wrapper = document.createElement('div');
-  wrapper.className = 'product-slider';
+  const container = document.createElement('div');
+  container.className = 'product-slider';
 
   products.forEach(product => {
     const card = document.createElement('div');
     card.className = 'product-card';
 
     card.innerHTML = `
-      <img class="product-img" src="${product.image}" alt="${product.title}" />
-      <div class="product-details">
-        <div class="product-title" title="${product.title}">
-          ${truncateText(product.title, 60)}
+      <a href="${product.url}" target="_blank" rel="noopener noreferrer">
+        <img src="${product.image}" alt="${product.title}" class="product-image" />
+        <div class="product-info">
+          <h4 class="product-title">${product.title}</h4>
+          <p class="product-author">${product.author ? `by ${product.author}` : ''}</p>
+          <p class="product-price">${product.price}</p>
+          ${product.discount ? `<p class="product-discount">${product.discount}</p>` : ''}
         </div>
-        <div class="product-author">${product.author || ''}</div>
-        <div class="product-price">
-          ${product.discount ? `<span class="discount">${product.discount}</span> ` : ''}
-          ${product.price}
-        </div>
-        <a class="buy-now" href="${product.url}" target="_blank">Buy Now</a>
-      </div>
+      </a>
     `;
 
-    wrapper.appendChild(card);
+    container.appendChild(card);
   });
 
-  chatBox.appendChild(wrapper);
+  chatBox.appendChild(container);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
