@@ -114,8 +114,8 @@ button {
 
 .product-price-overlay {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 2px;
+  right: 2px;
   background: rgba(0, 0, 0, 0.75);
   color: #fff;
   font-size: 13px;
