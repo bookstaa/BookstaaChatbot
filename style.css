@@ -113,7 +113,8 @@ button {
   position: relative;
 }
 
-.product-price-overlay {
+.product-price-overlay::before {
+  content: "Rs. ";
   position: absolute;
   top: -2px;
   right: -2px;
