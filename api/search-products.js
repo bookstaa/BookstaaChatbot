@@ -100,7 +100,7 @@ module.exports = async (req, res) => {
         score += 15;
       }
 
-      // 🧠 Bonus: Total matched tokens = more relevant product
+            // 🧠 Bonus: Total matched tokens = more relevant product
       score += matchedTokens.size * 12;
 
       if (score > 0) {
@@ -108,9 +108,18 @@ module.exports = async (req, res) => {
         const compare = parseFloat(product.compareAtPrice || '0');
         const discount = compare > price ? Math.round(((compare - price) / compare) * 100) : 0;
 
+        // ✨ Format author with Title Case
+        const formatAuthor = (name) =>
+          name
+            ?.split(' ')
+            .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' ')
+            .trim();
+
+        // ✅ Push final result
         results.push({
           title: product.title,
-          author: metafieldMap['author01'] || '',
+          author: formatAuthor(metafieldMap['author01'] || ''),
           price: `₹${price}`,
           image: product.image || '',
           url: `https://www.bookstaa.com/products/${product.handle}`,
@@ -118,7 +127,7 @@ module.exports = async (req, res) => {
           score
         });
       }
-    }
+
 
     // 🧹 Final Sort by Score
     results.sort((a, b) => b.score - a.score);
