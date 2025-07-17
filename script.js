@@ -83,6 +83,7 @@ function showAssistantMessage(text) {
   msg.innerHTML = marked.parse(text); // Markdown support
   chatBox.appendChild(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
+}
 
   // 🕐 Section 7: Typing Dots
 function showTypingIndicator(show) {
